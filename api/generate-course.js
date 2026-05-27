@@ -17,6 +17,10 @@ export default async function handler(req, res) {
   try {
     const { topic } = req.body;
 
+    if (!topic) {
+      return res.status(400).json({ error: "Topic is required" });
+    }
+
     const prompt = `
       Gere um curso completo sobre o tema: ${topic}.
       Estrutura:
@@ -42,13 +46,21 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
+    // Debug: caso a OpenAI retorne erro
+    if (!data.choices || !data.choices[0]) {
+      console.error("OpenAI error:", data);
+      return res.status(500).json({
+        error: "OpenAI returned an invalid response",
+        details: data
+      });
+    }
+
     return res.status(200).json({
       html: data.choices[0].message.content
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Server error:", error);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 }
-
