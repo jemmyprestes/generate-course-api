@@ -21,42 +21,26 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Topic is required" });
     }
 const prompt = `
-Você vai gerar um CURSO COMPLETO e EXTREMAMENTE DETALHADO sobre o tema: ${topic}.
-
-O curso deve seguir EXATAMENTE esta estrutura:
+Gere a estrutura inicial de um curso sobre: ${topic}.
 
 <h1>Título do Curso</h1>
 
 <h2>Descrição Geral</h2>
-Escreva 2 a 3 parágrafos explicando o curso de forma clara, profunda e envolvente.
+Escreva 2 a 3 parágrafos explicando o curso.
 
-<h2>Módulo X: Nome do Módulo</h2>
-Escreva 1 parágrafo explicando o módulo.
+<h2>Módulos do Curso</h2>
+Liste 6 módulos com títulos, assim:
 
-<h3>Aula X: Título da Aula</h3>
-Escreva OBRIGATORIAMENTE:
-- 3 a 6 parágrafos explicando o conteúdo da aula
-- exemplos reais
-- analogias
-- explicações passo a passo
-- aplicações práticas
-- erros comuns
-- boas práticas
+<h3>Módulo 1: Nome</h3>
+<h3>Módulo 2: Nome</h3>
+...
+<h3>Módulo 6: Nome</h3>
 
-NÃO RESUMA.  
-NÃO pule conteúdo.  
-NÃO escreva apenas títulos.  
-NÃO escreva apenas 1 parágrafo.  
-Cada aula DEVE ter explicação completa e profunda.
-
-FORMATO DA RESPOSTA:
-- Apenas HTML puro (<h1>, <h2>, <h3>, <p>, <ul>, <li>)
-- NÃO use markdown
-- NÃO coloque “html” no topo
-- NÃO coloque comentários
-- NÃO coloque blocos de código
-- NÃO coloque texto fora da estrutura acima
+NÃO gere aulas aqui.
+Apenas a estrutura geral.
+HTML puro.
 `;
+
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
