@@ -21,16 +21,36 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Topic is required" });
     }
 
-    const prompt = `
-      Gere um curso completo sobre o tema: ${topic}.
-      Estrutura:
-      - Título
-      - Descrição
-      - 6 módulos
-      - Cada módulo com 4 aulas
-      - Responda em HTML pronto para Webflow.
-    `;
+   const prompt = `
+Crie um curso COMPLETO e DETALHADO sobre o tema: ${topic}.
 
+O curso deve conter:
+
+1) TÍTULO DO CURSO  
+2) DESCRIÇÃO GERAL DO CURSO (mínimo 2 parágrafos)  
+
+3) 6 MÓDULOS  
+Cada módulo deve conter:  
+- Título do módulo  
+- Pequena descrição do módulo  
+- 4 aulas  
+
+4) CADA AULA DEVE TER:  
+- Título  
+- Conteúdo detalhado em 2–4 parágrafos  
+- Exemplos práticos  
+- Explicações claras  
+
+FORMATO DA RESPOSTA:  
+- ENTREGAR TUDO EM HTML LIMPO  
+- Usar <h1>, <h2>, <h3>, <p>, <ul>, <li>  
+- NÃO usar markdown  
+- NÃO colocar blocos de código  
+- NÃO colocar “html” no topo  
+- NÃO colocar comentários  
+- Apenas HTML puro e organizado  
+`;
+    
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
