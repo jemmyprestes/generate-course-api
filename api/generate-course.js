@@ -35,6 +35,8 @@ Liste 6 módulos com títulos, assim:
 <h3>Módulo 2: Nome</h3>
 ...
 <h3>Módulo 6: Nome</h3>
+NÃO coloque ```html no topo.
+NÃO coloque blocos de código.
 
 NÃO gere aulas aqui.
 Apenas a estrutura geral.
