@@ -20,44 +20,43 @@ export default async function handler(req, res) {
     if (!topic) {
       return res.status(400).json({ error: "Topic is required" });
     }
+const prompt = `
+Você vai gerar um CURSO COMPLETO e EXTREMAMENTE DETALHADO sobre o tema: ${topic}.
 
-  const prompt = `
-Gere um CURSO COMPLETO, EXTREMAMENTE DETALHADO e com CONTEÚDO REAL dentro de cada aula sobre o tema: ${topic}.
-
-ESTRUTURA OBRIGATÓRIA:
+O curso deve seguir EXATAMENTE esta estrutura:
 
 <h1>Título do Curso</h1>
 
 <h2>Descrição Geral</h2>
-- Escreva 2 a 3 parágrafos explicando o curso de forma clara e envolvente.
+Escreva 2 a 3 parágrafos explicando o curso de forma clara, profunda e envolvente.
 
 <h2>Módulo X: Nome do Módulo</h2>
-- Escreva 1 parágrafo explicando o módulo.
-
-Para cada módulo, crie 4 aulas com o seguinte formato:
+Escreva 1 parágrafo explicando o módulo.
 
 <h3>Aula X: Título da Aula</h3>
-<p>
-Escreva 3 a 5 parágrafos EXPLICANDO A AULA EM DETALHES.
-Inclua:
-- Conceitos explicados de forma simples
-- Exemplos práticos
-- Situações reais
-- Passo a passo quando fizer sentido
-</p>
+Escreva OBRIGATORIAMENTE:
+- 3 a 6 parágrafos explicando o conteúdo da aula
+- exemplos reais
+- analogias
+- explicações passo a passo
+- aplicações práticas
+- erros comuns
+- boas práticas
 
-REGRAS IMPORTANTES:
-- NÃO resuma as aulas.
-- NÃO pule conteúdo.
-- NÃO escreva apenas títulos.
-- Cada aula DEVE ter explicação completa.
-- Use apenas HTML puro (<h1>, <h2>, <h3>, <p>, <ul>, <li>).
-- NÃO use markdown.
-- NÃO coloque blocos de código.
-- NÃO coloque “html” no topo.
-- NÃO coloque comentários.
+NÃO RESUMA.  
+NÃO pule conteúdo.  
+NÃO escreva apenas títulos.  
+NÃO escreva apenas 1 parágrafo.  
+Cada aula DEVE ter explicação completa e profunda.
+
+FORMATO DA RESPOSTA:
+- Apenas HTML puro (<h1>, <h2>, <h3>, <p>, <ul>, <li>)
+- NÃO use markdown
+- NÃO coloque “html” no topo
+- NÃO coloque comentários
+- NÃO coloque blocos de código
+- NÃO coloque texto fora da estrutura acima
 `;
-
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
