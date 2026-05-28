@@ -1,26 +1,15 @@
-export default function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  // resto do teu código...
-}
-
-  // CORS headers
+export default async function handler(req, res) {
+  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // Handle preflight OPTIONS request
+  // Preflight
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  // Only allow POST
+  // Only POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
@@ -31,7 +20,8 @@ export default function handler(req, res) {
     if (!topic) {
       return res.status(400).json({ error: "Topic is required" });
     }
-const prompt = `
+
+    const prompt = `
 Gere a estrutura inicial de um curso sobre: ${topic}.
 
 <h1>Título do Curso</h1>
@@ -46,14 +36,13 @@ Liste 6 módulos com títulos, assim:
 <h3>Módulo 2: Nome</h3>
 ...
 <h3>Módulo 6: Nome</h3>
-NÃO coloque ```html no topo.
+NÃO coloque \`\`\`html no topo.
 NÃO coloque blocos de código.
 
 NÃO gere aulas aqui.
 Apenas a estrutura geral.
 HTML puro.
 `;
-
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -70,7 +59,6 @@ HTML puro.
 
     const data = await response.json();
 
-    // Debug: caso a OpenAI retorne erro
     if (!data.choices || !data.choices[0]) {
       console.error("OpenAI error:", data);
       return res.status(500).json({
