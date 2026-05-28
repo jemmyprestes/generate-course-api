@@ -11,7 +11,6 @@ module.exports = async function handler(req, res) {
   try {
     const { topic } = req.body;
 
-    // Chamada para a OpenAI
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -23,11 +22,18 @@ module.exports = async function handler(req, res) {
         messages: [
           {
             role: "system",
-            content: "Gere a estrutura de um curso em HTML."
+            content:
+              "Gere APENAS HTML limpo, organizado e bem estruturado. " +
+              "Use <h2>, <h3>, <p>, <ul>, <li>. " +
+              "Não inclua explicações, comentários, markdown ou texto fora do HTML. " +
+              "Não inclua ```html. " +
+              "O HTML deve ser bonito, claro e pronto para ser exibido."
           },
           {
             role: "user",
-            content: `Crie a estrutura de um curso sobre: ${topic}`
+            content:
+              `Crie a estrutura completa de um curso sobre: ${topic}. ` +
+              "Inclua: Introdução, Objetivos, Público-alvo, Conteúdo do Curso (com 5 módulos), FAQ e Conclusão."
           }
         ]
       })
