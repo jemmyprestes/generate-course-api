@@ -9,40 +9,48 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { topic } = req.body;
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content:
-              "Gere APENAS HTML limpo, organizado e bem estruturado. " +
-              "Use <h2>, <h3>, <p>, <ul>, <li>. " +
-              "Não inclua explicações, comentários, markdown ou texto fora do HTML. " +
-              "Não inclua ```html. " +
-              "O HTML deve ser bonito, claro e pronto para ser exibido."
-          },
-          {
-            role: "user",
-            content:
-              `Crie a estrutura completa de um curso sobre: ${topic}. ` +
-              "Inclua: Introdução, Objetivos, Público-alvo, Conteúdo do Curso (com 5 módulos), FAQ e Conclusão."
-          }
-        ]
-      })
+    // Parse manual do body (necessário no Vercel + CommonJS)
+    let rawBody = "";
+    req.on("data", chunk => {
+      rawBody += chunk;
     });
 
-    const data = await response.json();
+    req.on("end", async () => {
+      const { topic } = JSON.parse(rawBody);
 
-    return res.status(200).json({
-      html: data.choices?.[0]?.message?.content || "<p>Erro ao gerar conteúdo.</p>"
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content:
+                "Gere APENAS HTML limpo, organizado e bem estruturado. " +
+                "Use <h2>, <h3>, <p>, <ul>, <li>. " +
+                "Não inclua explicações, comentários, markdown ou texto fora do HTML. " +
+                "Não inclua ```html. " +
+                "O HTML deve ser bonito, claro e pronto para ser exibido."
+            },
+            {
+              role: "user",
+              content:
+                `Crie a estrutura completa de um curso sobre: ${topic}. ` +
+                "Inclua: Introdução, Objetivos, Público-alvo, Conteúdo do Curso (com 5 módulos), FAQ e Conclusão."
+            }
+          ]
+        })
+      });
+
+      const data = await response.json();
+
+      return res.status(200).json({
+        html: data.choices?.[0]?.message?.content || "<p>Erro ao gerar conteúdo.</p>"
+      });
     });
 
   } catch (error) {
