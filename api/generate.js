@@ -10,13 +10,7 @@ module.exports = async function handler(req, res) {
 
   try {
     // Parse manual do body (necessário no Vercel + CommonJS)
-    let rawBody = "";
-    req.on("data", chunk => {
-      rawBody += chunk;
-    });
-
-    req.on("end", async () => {
-      const { topic } = JSON.parse(rawBody);
+   const { topic } = req.body;
 
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
