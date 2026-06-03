@@ -1,12 +1,15 @@
 export default async function handler(req, res) {
+  // Ajuste para o domínio exato do seu site
   const ALLOWED_ORIGIN = "https://e-learn-landing.webflow.io";
 
   function setCorsHeaders() {
+    // normaliza sem barra final
     res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
     res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   }
 
+  // Preflight
   if (req.method === "OPTIONS") {
     setCorsHeaders();
     return res.status(204).end();
@@ -24,7 +27,6 @@ export default async function handler(req, res) {
 
     const contentType = (req.headers["content-type"] || "").toLowerCase();
     let body = {};
-
     if (contentType.includes("application/json")) {
       try { body = raw ? JSON.parse(raw) : {}; }
       catch (e) { return res.status(400).json({ error: "Invalid JSON", details: e.message }); }
@@ -38,11 +40,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid payload", details: "topic is required and must be a string" });
     }
 
-    // Substitua abaixo pelo seu fluxo real que gera HTML
+    // Geração real do HTML (substitua por sua lógica)
     const generatedHtml = `<h2>Curso de ${escapeHtml(body.topic)}</h2><p>Conteúdo gerado com sucesso.</p>`;
 
     return res.status(200).json({ ok: true, html: generatedHtml });
   } catch (err) {
+    // log genérico (sem expor body)
     console.error('Handler unexpected error:', err?.message || err);
     return res.status(500).json({ error: "Internal server error" });
   }
