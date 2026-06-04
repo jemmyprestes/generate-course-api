@@ -1,56 +1,58 @@
-export default async function handler(req, res) {
-  // Ajuste para o domínio exato do seu site
-  const ALLOWED_ORIGIN = "https://e-learn-landing.webflow.io";
+// File: api/generate-module.js
+export const runtime = 'edge';
 
-  function setCorsHeaders() {
-    // normaliza sem barra final
-    res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
-    res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  }
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400'
+};
 
-  // Preflight
-  if (req.method === "OPTIONS") {
-    setCorsHeaders();
-    return res.status(204).end();
-  }
-
-  setCorsHeaders();
-
-  try {
-    const raw = await new Promise((resolve, reject) => {
-      let data = "";
-      req.on("data", chunk => data += chunk);
-      req.on("end", () => resolve(data));
-      req.on("error", reject);
-    });
-
-    const contentType = (req.headers["content-type"] || "").toLowerCase();
-    let body = {};
-    if (contentType.includes("application/json")) {
-      try { body = raw ? JSON.parse(raw) : {}; }
-      catch (e) { return res.status(400).json({ error: "Invalid JSON", details: e.message }); }
-    } else if (contentType.includes("application/x-www-form-urlencoded")) {
-      body = Object.fromEntries(new URLSearchParams(raw).entries());
-    } else {
-      try { body = raw ? JSON.parse(raw) : {}; } catch { body = {}; }
-    }
-
-    if (!body.topic || typeof body.topic !== "string") {
-      return res.status(400).json({ error: "Invalid payload", details: "topic is required and must be a string" });
-    }
-
-    // Geração real do HTML (substitua por sua lógica)
-    const generatedHtml = `<h2>Curso de ${escapeHtml(body.topic)}</h2><p>Conteúdo gerado com sucesso.</p>`;
-
-    return res.status(200).json({ ok: true, html: generatedHtml });
-  } catch (err) {
-    // log genérico (sem expor body)
-    console.error('Handler unexpected error:', err?.message || err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+export async function POST(request) {
+  try {
+    const contentType = request.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return new Response(JSON.stringify({ error: 'Content-Type must be application/json' }), {
+        status: 415,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const body = await request.json();
+    const moduleTitle = (body.moduleTitle || '').toString().trim();
+    const courseId = (body.courseId || '').toString().trim();
+
+    if (!moduleTitle || !courseId) {
+      return new Response(JSON.stringify({ error: 'moduleTitle and courseId are required' }), {
+        status: 400,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const module = {
+      id: `module_${Date.now()}`,
+      courseId,
+      title: moduleTitle,
+      summary: `Resumo do módulo ${moduleTitle}`,
+      lessons: [
+        { id: 1, title: 'Objetivos' },
+        { id: 2, title: 'Conteúdo principal' }
+      ],
+      createdAt: new Date().toISOString()
+    };
+
+    return new Response(JSON.stringify(module), {
+      status: 200,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: 'internal_server_error' }), {
+      status: 500,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    });
+  }
 }
