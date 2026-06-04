@@ -1,4 +1,4 @@
-// File: api/generate-module.js
+// File: api/generate.js
 export const runtime = 'edge';
 
 const CORS_HEADERS = {
@@ -23,29 +23,29 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const moduleTitle = (body.moduleTitle || '').toString().trim();
-    const courseId = (body.courseId || '').toString().trim();
+    const topic = (body.topic || '').toString().trim();
+    const level = (body.level || 'beginner').toString().trim();
 
-    if (!moduleTitle || !courseId) {
-      return new Response(JSON.stringify({ error: 'moduleTitle and courseId are required' }), {
+    if (!topic) {
+      return new Response(JSON.stringify({ error: 'topic is required' }), {
         status: 400,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
       });
     }
 
-    const module = {
-      id: `module_${Date.now()}`,
-      courseId,
-      title: moduleTitle,
-      summary: `Resumo do módulo ${moduleTitle}`,
-      lessons: [
-        { id: 1, title: 'Objetivos' },
-        { id: 2, title: 'Conteúdo principal' }
-      ],
-      createdAt: new Date().toISOString()
+    // Geração simples de exemplo; substitua pela sua lógica (LLM, templates, DB)
+    const course = {
+      id: `course_${Date.now()}`,
+      title: `Curso de ${topic}`,
+      level,
+      createdAt: new Date().toISOString(),
+      modules: [
+        { id: 1, title: 'Introdução', summary: `Visão geral do ${topic}` },
+        { id: 2, title: 'Fundamentos', summary: 'Conceitos essenciais' }
+      ]
     };
 
-    return new Response(JSON.stringify(module), {
+    return new Response(JSON.stringify(course), {
       status: 200,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
     });
