@@ -1,59 +1,58 @@
-module.exports = async function handler(req, res) {
-  // CORS
-  res.setHeader("Access-Control-Allow-Origin", "https://e-learn-landing.webflow.io");
-  res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+// File: api/generate-module.js
+export const runtime = 'edge';
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  try {
-    // Parse manual do body (necessário no Vercel + CommonJS)
-    let rawBody = "";
-    req.on("data", chunk => {
-      rawBody += chunk;
-    });
-
-    req.on("end", async () => {
-      const { topic, moduleNumber } = JSON.parse(rawBody);
-
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content:
-                "Gere APENAS HTML limpo, organizado e bem estruturado. " +
-                "Use <h2>, <h3>, <p>, <ul>, <li>. " +
-                "Não inclua explicações, comentários, markdown ou texto fora do HTML. " +
-                "O HTML deve ser bonito, claro e pronto para ser exibido."
-            },
-            {
-              role: "user",
-              content:
-                `Gere o conteúdo completo do Módulo ${moduleNumber} do curso sobre ${topic}. ` +
-                "Inclua: título, objetivos, tópicos detalhados, exemplos e conclusão."
-            }
-          ]
-        })
-      });
-
-      const data = await response.json();
-
-      return res.status(200).json({
-        html: data.choices?.[0]?.message?.content || "<p>Erro ao gerar módulo.</p>"
-      });
-    });
-
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Erro interno no servidor." });
-  }
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400'
 };
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
+
+export async function POST(request) {
+  try {
+    const contentType = request.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return new Response(JSON.stringify({ error: 'Content-Type must be application/json' }), {
+        status: 415,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const body = await request.json();
+    const moduleTitle = (body.moduleTitle || '').toString().trim();
+    const courseId = (body.courseId || '').toString().trim();
+
+    if (!moduleTitle || !courseId) {
+      return new Response(JSON.stringify({ error: 'moduleTitle and courseId are required' }), {
+        status: 400,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const module = {
+      id: `module_${Date.now()}`,
+      courseId,
+      title: moduleTitle,
+      summary: `Resumo do módulo ${moduleTitle}`,
+      lessons: [
+        { id: 1, title: 'Objetivos' },
+        { id: 2, title: 'Conteúdo principal' }
+      ],
+      createdAt: new Date().toISOString()
+    };
+
+    return new Response(JSON.stringify(module), {
+      status: 200,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: 'internal_server_error' }), {
+      status: 500,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    });
+  }
+}
