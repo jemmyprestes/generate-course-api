@@ -1,5 +1,4 @@
-export default function handler(req, res) {
-  const ALLOWED_ORIGIN = "https://e-learn-landing.webflow.io";
+export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
