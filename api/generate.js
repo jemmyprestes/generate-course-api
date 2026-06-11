@@ -1,5 +1,215 @@
+function escapeHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function cleanJsonText(text) {
+  return text
+    .replace(/```json/g, "")
+    .replace(/```/g, "")
+    .trim();
+}
+
+async function searchPexelsImage(query) {
+  if (!process.env.PEXELS_API_KEY || !query) return null;
+
+  try {
+    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(
+      query
+    )}&per_page=1&orientation=landscape&locale=pt-BR`;
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: process.env.PEXELS_API_KEY
+      }
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const photo = data.photos?.[0];
+
+    if (!photo) return null;
+
+    return {
+      src: photo.src?.large || photo.src?.medium || photo.src?.original,
+      alt: photo.alt || query,
+      photographer: photo.photographer || "",
+      pageUrl: photo.url || ""
+    };
+  } catch (error) {
+    console.error("Erro ao buscar imagem no Pexels:", error);
+    return null;
+  }
+}
+
+async function searchYouTubeVideo(query) {
+  if (!process.env.YOUTUBE_API_KEY || !query) return null;
+
+  try {
+    const searchQuery = `${query} aula tutorial português`;
+
+    const url =
+      `https://www.googleapis.com/youtube/v3/search` +
+      `?part=snippet` +
+      `&type=video` +
+      `&maxResults=1` +
+      `&safeSearch=moderate` +
+      `&videoEmbeddable=true` +
+      `&relevanceLanguage=pt` +
+      `&regionCode=BR` +
+      `&q=${encodeURIComponent(searchQuery)}` +
+      `&key=${process.env.YOUTUBE_API_KEY}`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const item = data.items?.[0];
+
+    if (!item?.id?.videoId) return null;
+
+    return {
+      videoId: item.id.videoId,
+      title: item.snippet?.title || "Vídeo sugerido"
+    };
+  } catch (error) {
+    console.error("Erro ao buscar vídeo no YouTube:", error);
+    return null;
+  }
+}
+
+function renderCourseHtml(course) {
+  const modulesHtml = course.modules
+    .map((module, moduleIndex) => {
+      const lessonsHtml = module.lessons
+        .map((lesson, lessonIndex) => {
+          const imageHtml = lesson.image
+            ? `
+              <div class="media-card">
+                <p><strong>Imagem de apoio</strong></p>
+                <img src="${escapeHtml(lesson.image.src)}" alt="${escapeHtml(
+                lesson.image.alt
+              )}" loading="lazy" />
+                ${
+                  lesson.image.photographer
+                    ? `<p class="media-credit">Foto: ${escapeHtml(
+                        lesson.image.photographer
+                      )}</p>`
+                    : ""
+                }
+              </div>
+            `
+            : "";
+
+          const videoHtml = lesson.video
+            ? `
+              <div class="media-card">
+                <p><strong>Vídeo prático</strong></p>
+                <div class="video-wrapper">
+                  <iframe
+                    src="https://www.youtube.com/embed/${escapeHtml(
+                      lesson.video.videoId
+                    )}"
+                    title="${escapeHtml(lesson.video.title)}"
+                    frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen>
+                  </iframe>
+                </div>
+                <p class="media-credit">${escapeHtml(lesson.video.title)}</p>
+              </div>
+            `
+            : "";
+
+          return `
+            <div class="course-lesson">
+              <h5>Aula ${lessonIndex + 1} — ${escapeHtml(lesson.title)}</h5>
+
+              <p><strong>Objetivo da aula:</strong> ${escapeHtml(
+                lesson.objective
+              )}</p>
+
+              <p><strong>Conteúdo da aula:</strong> ${escapeHtml(
+                lesson.content
+              )}</p>
+
+              <p><strong>Exemplo prático:</strong> ${escapeHtml(
+                lesson.example
+              )}</p>
+
+              <div class="lesson-media">
+                ${imageHtml}
+                ${videoHtml}
+              </div>
+
+              <p><strong>Atividade:</strong> ${escapeHtml(lesson.activity)}</p>
+            </div>
+          `;
+        })
+        .join("");
+
+      return `
+        <details class="course-module">
+          <summary><strong>Módulo ${moduleIndex + 1} — ${escapeHtml(
+        module.title
+      )}</strong></summary>
+
+          <p><strong>Resumo do módulo:</strong> ${escapeHtml(
+            module.summary
+          )}</p>
+
+          <p><strong>Aulas do módulo:</strong></p>
+
+          ${lessonsHtml}
+
+          <p><strong>Exercício prático do módulo:</strong> ${escapeHtml(
+            module.moduleExercise
+          )}</p>
+        </details>
+      `;
+    })
+    .join("");
+
+  return `
+    <h2>${escapeHtml(course.title)}</h2>
+
+    <p>${escapeHtml(course.description)}</p>
+
+    <h3>Para quem é o curso</h3>
+    <ul>
+      ${course.audience.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+    </ul>
+
+    <h3>Objetivo principal</h3>
+    <p>${escapeHtml(course.objective)}</p>
+
+    <h3>Módulos do curso</h3>
+    <p>${escapeHtml(course.modulesIntro)}</p>
+
+    ${modulesHtml}
+
+    <h3>Projeto final</h3>
+    <p>${escapeHtml(course.finalProject)}</p>
+
+    <h3>Critérios de conclusão</h3>
+    <ul>
+      ${course.completionCriteria
+        .map((item) => `<li>${escapeHtml(item)}</li>`)
+        .join("")}
+    </ul>
+
+    <h3>Próximos passos</h3>
+    <p>${escapeHtml(course.nextSteps)}</p>
+  `;
+}
+
 export default async function handler(req, res) {
-  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -28,9 +238,15 @@ export default async function handler(req, res) {
     });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  const missingKeys = [];
+
+  if (!process.env.OPENAI_API_KEY) missingKeys.push("OPENAI_API_KEY");
+  if (!process.env.PEXELS_API_KEY) missingKeys.push("PEXELS_API_KEY");
+  if (!process.env.YOUTUBE_API_KEY) missingKeys.push("YOUTUBE_API_KEY");
+
+  if (missingKeys.length > 0) {
     return res.status(500).json({
-      error: "OPENAI_API_KEY não configurada na Vercel"
+      error: `Variáveis não configuradas na Vercel: ${missingKeys.join(", ")}`
     });
   }
 
@@ -39,99 +255,60 @@ Você é um especialista em criação de cursos online.
 
 Crie um curso completo em português sobre: "${topic}".
 
-O conteúdo deve ser retornado em HTML limpo, pronto para ser inserido dentro de uma página Webflow usando innerHTML.
-
-Use SOMENTE estas tags HTML:
-<h2>, <h3>, <h4>, <h5>, <p>, <ul>, <li>, <strong>, <br>, <details>, <summary>
-
+Retorne APENAS JSON válido.
 Não use Markdown.
-Não use #, ##, ###.
-Não use **.
+Não use HTML.
 Não use crases.
-Não use bloco de código.
-Não escreva \`\`\`html.
-Não explique o que você está fazendo.
-Retorne somente o HTML do curso.
+Não escreva explicações fora do JSON.
 
-Estrutura obrigatória:
+O JSON precisa seguir exatamente esta estrutura:
 
-<h2>Título do curso</h2>
+{
+  "title": "Título do curso",
+  "description": "Descrição curta e atrativa do curso",
+  "audience": [
+    "Perfil de aluno 1",
+    "Perfil de aluno 2",
+    "Perfil de aluno 3",
+    "Perfil de aluno 4"
+  ],
+  "objective": "Objetivo principal do curso",
+  "modulesIntro": "Frase explicando como o curso está organizado",
+  "modules": [
+    {
+      "title": "Nome do módulo",
+      "summary": "Resumo do módulo",
+      "moduleExercise": "Exercício prático do módulo",
+      "lessons": [
+        {
+          "title": "Título da aula",
+          "objective": "Objetivo da aula",
+          "content": "Conteúdo da aula em texto corrido. Explique como uma mini aula para iniciante.",
+          "example": "Exemplo prático aplicado ao tema",
+          "activity": "Atividade prática da aula",
+          "imageQuery": "termo curto para buscar uma imagem prática no Pexels",
+          "videoQuery": "termo curto para buscar um vídeo prático no YouTube"
+        }
+      ]
+    }
+  ],
+  "finalProject": "Descrição do projeto final",
+  "completionCriteria": [
+    "Critério 1",
+    "Critério 2",
+    "Critério 3",
+    "Critério 4"
+  ],
+  "nextSteps": "Próximos passos após concluir o curso"
+}
 
-<p>Crie uma descrição curta e atrativa do curso.</p>
-
-<h3>Para quem é o curso</h3>
-<ul>
-  <li>Perfil de aluno 1</li>
-  <li>Perfil de aluno 2</li>
-  <li>Perfil de aluno 3</li>
-  <li>Perfil de aluno 4</li>
-</ul>
-
-<h3>Objetivo principal</h3>
-<p>Explique claramente o que o aluno será capaz de fazer ao terminar o curso.</p>
-
-<h3>Módulos do curso</h3>
-<p>Explique em uma frase como o curso está organizado.</p>
-
-Agora crie exatamente 6 módulos.
-
-Cada módulo precisa ser clicável/abrível usando esta estrutura EXATA:
-
-<details class="course-module">
-  <summary><strong>Módulo 1 — Nome do módulo</strong></summary>
-
-  <p><strong>Resumo do módulo:</strong> Escreva um resumo claro explicando o que o aluno vai aprender neste módulo.</p>
-
-  <p><strong>Aulas do módulo:</strong></p>
-
-  <h5>Aula 1 — Título da aula</h5>
-  <p><strong>Objetivo da aula:</strong> Explique o objetivo específico da aula.</p>
-  <p><strong>Conteúdo da aula:</strong> Desenvolva a aula em texto corrido, com explicação real. Não escreva apenas uma frase curta. Explique o conceito como se fosse uma mini aula para um iniciante.</p>
-  <p><strong>Exemplo prático:</strong> Dê um exemplo aplicado ao tema do curso.</p>
-  <p><strong>Atividade:</strong> Crie uma tarefa simples e prática para o aluno executar.</p>
-
-  <h5>Aula 2 — Título da aula</h5>
-  <p><strong>Objetivo da aula:</strong> Explique o objetivo específico da aula.</p>
-  <p><strong>Conteúdo da aula:</strong> Desenvolva a aula em texto corrido, com explicação real.</p>
-  <p><strong>Exemplo prático:</strong> Dê um exemplo aplicado ao tema do curso.</p>
-  <p><strong>Imagem sugerida:</strong> Descreva uma imagem útil para complementar esta aula. Se a aula não precisar de imagem, escreva "Não necessário".</p>
-  <p><strong>Vídeo sugerido:</strong> Descreva um vídeo curto ou demonstração prática que ajudaria o aluno. Se a aula não precisar de vídeo, escreva "Não necessário".</p>
-  <p><strong>Atividade:</strong> Crie uma tarefa simples e prática para o aluno executar.</p>
-
-  <h5>Aula 3 — Título da aula</h5>
-  <p><strong>Objetivo da aula:</strong> Explique o objetivo específico da aula.</p>
-  <p><strong>Conteúdo da aula:</strong> Desenvolva a aula em texto corrido, com explicação real.</p>
-  <p><strong>Exemplo prático:</strong> Dê um exemplo aplicado ao tema do curso.</p>
-  <p><strong>Imagem sugerida:</strong> Descreva uma imagem útil para complementar esta aula. Se a aula não precisar de imagem, escreva "Não necessário".</p>
-  <p><strong>Vídeo sugerido:</strong> Descreva um vídeo curto ou demonstração prática que ajudaria o aluno. Se a aula não precisar de vídeo, escreva "Não necessário".</p>
-  <p><strong>Atividade:</strong> Crie uma tarefa simples e prática para o aluno executar.</p>
-  <p><strong>Exercício prático do módulo:</strong> Crie um exercício maior que una os aprendizados das aulas do módulo.</p>
-</details>
-
-Regras dos módulos:
-Cada módulo precisa ficar dentro de uma tag <details class="course-module">.
-O título do módulo precisa ficar dentro de <summary>.
-Todo o conteúdo do módulo precisa ficar dentro do mesmo <details>.
-Não coloque aulas fora dos módulos.
-Crie exatamente 3 aulas por módulo.
-Cada aula precisa ter objetivo, conteúdo, exemplo prático e atividade.
-O curso deve parecer um material real de estudo, não apenas uma ementa.
-
-Depois dos 6 módulos, inclua:
-
-<h3>Projeto final</h3>
-<p>Descreva um projeto final completo que o aluno deve construir usando tudo o que aprendeu no curso.</p>
-
-<h3>Critérios de conclusão</h3>
-<ul>
-  <li>Critério 1</li>
-  <li>Critério 2</li>
-  <li>Critério 3</li>
-  <li>Critério 4</li>
-</ul>
-
-<h3>Próximos passos</h3>
-<p>Explique o que o aluno pode estudar, criar ou vender depois de concluir o curso.</p>
+Regras:
+Crie exatamente 6 módulos.
+Cada módulo deve ter exatamente 3 aulas.
+Cada aula precisa ter objetivo, conteúdo, exemplo, atividade, imageQuery e videoQuery.
+O conteúdo de cada aula precisa ser útil e prático, não apenas uma frase curta.
+Os termos imageQuery e videoQuery devem ser específicos e fáceis de buscar.
+Para videoQuery, prefira termos em português quando fizer sentido.
 `;
 
   try {
@@ -160,7 +337,7 @@ Depois dos 6 módulos, inclua:
 
     const data = await aiResponse.json();
 
-    let course =
+    const outputText =
       data.output_text ||
       data.output
         ?.flatMap((item) => item.content || [])
@@ -168,19 +345,46 @@ Depois dos 6 módulos, inclua:
         ?.join("\n")
         ?.trim();
 
-    if (!course) {
+    if (!outputText) {
       return res.status(500).json({
         error: "A IA não retornou conteúdo."
       });
     }
 
-    course = course
-      .replace(/```html/g, "")
-      .replace(/```/g, "")
-      .trim();
+    let course;
+
+    try {
+      course = JSON.parse(cleanJsonText(outputText));
+    } catch (error) {
+      console.error("Erro ao converter JSON:", outputText);
+
+      return res.status(500).json({
+        error: "A IA retornou um formato inválido. Tente gerar novamente."
+      });
+    }
+
+    const mediaTasks = [];
+
+    course.modules.forEach((module) => {
+      module.lessons.forEach((lesson) => {
+        mediaTasks.push(
+          Promise.all([
+            searchPexelsImage(lesson.imageQuery),
+            searchYouTubeVideo(lesson.videoQuery)
+          ]).then(([image, video]) => {
+            lesson.image = image;
+            lesson.video = video;
+          })
+        );
+      });
+    });
+
+    await Promise.all(mediaTasks);
+
+    const html = renderCourseHtml(course);
 
     return res.status(200).json({
-      course
+      course: html
     });
   } catch (error) {
     console.error("Erro interno:", error);
