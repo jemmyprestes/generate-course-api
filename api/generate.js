@@ -7,106 +7,42 @@ function escapeHtml(value = "") {
     .replaceAll("'", "&#039;");
 }
 
-function cleanJsonText(text) {
+function cleanJsonText(text = "") {
   return text
     .replace(/```json/g, "")
     .replace(/```/g, "")
     .trim();
 }
 
-async function searchPexelsImage(query) {
-  if (!process.env.PEXELS_API_KEY || !query) {
-    return {
-      fallback: true,
-      searchUrl: `https://www.pexels.com/search/${encodeURIComponent(query || "")}/`
-    };
-  }
-
-  try {
-    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(
-      query
-    )}&per_page=1&orientation=landscape`;
-
-    const response = await fetch(url, {
-      headers: {
-        Authorization: process.env.PEXELS_API_KEY
-      }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Erro Pexels API:", response.status, errorText);
-
-      return {
-        fallback: true,
-        searchUrl: `https://www.pexels.com/search/${encodeURIComponent(query)}/`
-      };
-    }
-
-    const data = await response.json();
-    const photo = data.photos?.[0];
-
-    if (!photo) {
-      console.log("Nenhuma imagem encontrada para:", query);
-
-      return {
-        fallback: true,
-        searchUrl: `https://www.pexels.com/search/${encodeURIComponent(query)}/`
-      };
-    }
-
-    return {
-      fallback: false,
-      src: photo.src?.large || photo.src?.medium || photo.src?.original,
-      alt: photo.alt || query,
-      photographer: photo.photographer || "",
-      pageUrl: photo.url || ""
-    };
-  } catch (error) {
-    console.error("Erro ao buscar imagem no Pexels:", error);
-
-    return {
-      fallback: true,
-      searchUrl: `https://www.pexels.com/search/${encodeURIComponent(query)}/`
-    };
-  }
+function createYouTubeSearchUrl(query = "") {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
 }
 
-async function searchYouTubeVideo(query) {
-  if (!process.env.YOUTUBE_API_KEY || !query) return null;
+function renderVisualExample(visualExample) {
+  if (!visualExample) return "";
 
-  try {
-    const searchQuery = `${query} aula tutorial português`;
+  const items = Array.isArray(visualExample.items) ? visualExample.items : [];
 
-    const url =
-      `https://www.googleapis.com/youtube/v3/search` +
-      `?part=snippet` +
-      `&type=video` +
-      `&maxResults=1` +
-      `&safeSearch=moderate` +
-      `&videoEmbeddable=true` +
-      `&relevanceLanguage=pt` +
-      `&regionCode=BR` +
-      `&q=${encodeURIComponent(searchQuery)}` +
-      `&key=${process.env.YOUTUBE_API_KEY}`;
+  return `
+    <div class="visual-example-card">
+      <p class="visual-label"><strong>Exemplo visual prático</strong></p>
+      <h6>${escapeHtml(visualExample.title || "Exemplo visual")}</h6>
+      <p>${escapeHtml(visualExample.description || "")}</p>
 
-    const response = await fetch(url);
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    const item = data.items?.[0];
-
-    if (!item?.id?.videoId) return null;
-
-    return {
-      videoId: item.id.videoId,
-      title: item.snippet?.title || "Vídeo sugerido"
-    };
-  } catch (error) {
-    console.error("Erro ao buscar vídeo no YouTube:", error);
-    return null;
-  }
+      <div class="visual-box visual-${escapeHtml(visualExample.type || "estrutura")}">
+        ${items
+          .map(
+            (item, index) => `
+              <div class="visual-item">
+                <span>${index + 1}</span>
+                <p>${escapeHtml(item)}</p>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    </div>
+  `;
 }
 
 function renderCourseHtml(course) {
@@ -114,57 +50,10 @@ function renderCourseHtml(course) {
     .map((module, moduleIndex) => {
       const lessonsHtml = module.lessons
         .map((lesson, lessonIndex) => {
-          const imageHtml = lesson.image?.src
-  ? `
-    <div class="media-card">
-      <p><strong>Imagem de apoio</strong></p>
-      <img src="${escapeHtml(lesson.image.src)}" alt="${escapeHtml(
-        lesson.image.alt
-      )}" loading="lazy" />
-      ${
-        lesson.image.photographer
-          ? `<p class="media-credit">Foto: ${escapeHtml(
-              lesson.image.photographer
-            )}</p>`
-          : ""
-      }
-    </div>
-  `
-  : lesson.image?.searchUrl
-    ? `
-      <div class="media-card">
-        <p><strong>Imagem de apoio</strong></p>
-        <p>Não consegui carregar uma imagem automaticamente, mas você pode abrir uma busca pronta:</p>
-        <a href="${escapeHtml(lesson.image.searchUrl)}" target="_blank" rel="noopener noreferrer">
-          Buscar imagem para esta aula
-        </a>
-      </div>
-    `
-    : `
-      <div class="media-card">
-        <p><strong>Imagem de apoio:</strong> nenhuma imagem encontrada para esta aula.</p>
-      </div>
-    `;
-
-          const videoHtml = lesson.video
-            ? `
-              <div class="media-card">
-                <p><strong>Vídeo prático</strong></p>
-                <div class="video-wrapper">
-                  <iframe
-                    src="https://www.youtube.com/embed/${escapeHtml(
-                      lesson.video.videoId
-                    )}"
-                    title="${escapeHtml(lesson.video.title)}"
-                    frameborder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowfullscreen>
-                  </iframe>
-                </div>
-                <p class="media-credit">${escapeHtml(lesson.video.title)}</p>
-              </div>
-            `
-            : "";
+          const youtubeUrl = createYouTubeSearchUrl(
+            lesson.videoSearchQuery ||
+              `${course.title} ${module.title} ${lesson.title} aula prática português`
+          );
 
           return `
             <div class="course-lesson">
@@ -182,9 +71,19 @@ function renderCourseHtml(course) {
                 lesson.example
               )}</p>
 
-              <div class="lesson-media">
-                ${imageHtml}
-                ${videoHtml}
+              ${renderVisualExample(lesson.visualExample)}
+
+              <div class="video-suggestion-card">
+                <p><strong>Vídeo prático sugerido</strong></p>
+                <p>${escapeHtml(
+                  lesson.videoSuggestion ||
+                    "Assista a um vídeo prático relacionado a esta aula."
+                )}</p>
+                <a href="${escapeHtml(
+                  youtubeUrl
+                )}" target="_blank" rel="noopener noreferrer">
+                  Buscar vídeo prático desta aula
+                </a>
               </div>
 
               <p><strong>Atividade:</strong> ${escapeHtml(lesson.activity)}</p>
@@ -258,10 +157,11 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "GET") {
-  return res.status(200).json({
-    message: "API com imagens e vídeos ativa - versão 2"
-  });
-}
+    return res.status(200).json({
+      message:
+        "API com módulos, exemplos visuais e vídeos sugeridos ativa. Envie POST com { topic }."
+    });
+  }
 
   if (req.method !== "POST") {
     return res.status(405).json({
@@ -277,20 +177,14 @@ export default async function handler(req, res) {
     });
   }
 
-  const missingKeys = [];
-
-  if (!process.env.OPENAI_API_KEY) missingKeys.push("OPENAI_API_KEY");
-  if (!process.env.PEXELS_API_KEY) missingKeys.push("PEXELS_API_KEY");
-  if (!process.env.YOUTUBE_API_KEY) missingKeys.push("YOUTUBE_API_KEY");
-
-  if (missingKeys.length > 0) {
+  if (!process.env.OPENAI_API_KEY) {
     return res.status(500).json({
-      error: `Variáveis não configuradas na Vercel: ${missingKeys.join(", ")}`
+      error: "OPENAI_API_KEY não configurada na Vercel"
     });
   }
 
   const prompt = `
-Você é um especialista em criação de cursos online.
+Você é um especialista em criação de cursos online, educação prática e design instrucional.
 
 Crie um curso completo em português sobre: "${topic}".
 
@@ -324,9 +218,21 @@ O JSON precisa seguir exatamente esta estrutura:
           "objective": "Objetivo da aula",
           "content": "Conteúdo da aula em texto corrido. Explique como uma mini aula para iniciante.",
           "example": "Exemplo prático aplicado ao tema",
-          "activity": "Atividade prática da aula",
-          "imageQuery": "termo curto para buscar uma imagem prática no Pexels",
-          "videoQuery": "termo curto para buscar um vídeo prático no YouTube"
+          "visualExample": {
+            "title": "Título do exemplo visual",
+            "type": "wireframe, fluxo, checklist, comparação, mapa, estrutura, tabela ou sequência",
+            "description": "Explique o que o exemplo visual representa",
+            "items": [
+              "Elemento visual 1",
+              "Elemento visual 2",
+              "Elemento visual 3",
+              "Elemento visual 4",
+              "Elemento visual 5"
+            ]
+          },
+          "videoSuggestion": "Descreva qual tipo de vídeo prático ajudaria esta aula",
+          "videoSearchQuery": "termo curto e específico para buscar vídeo prático no YouTube em português",
+          "activity": "Atividade prática da aula"
         }
       ]
     }
@@ -341,13 +247,16 @@ O JSON precisa seguir exatamente esta estrutura:
   "nextSteps": "Próximos passos após concluir o curso"
 }
 
-Regras:
+Regras obrigatórias:
 Crie exatamente 6 módulos.
 Cada módulo deve ter exatamente 3 aulas.
-Cada aula precisa ter objetivo, conteúdo, exemplo, atividade, imageQuery e videoQuery.
-O conteúdo de cada aula precisa ser útil e prático, não apenas uma frase curta.
-Os termos imageQuery e videoQuery devem ser específicos e fáceis de buscar.
-Para videoQuery, prefira termos em português quando fizer sentido.
+Cada aula precisa ter objetivo, conteúdo, exemplo, exemplo visual, sugestão de vídeo, termo de busca de vídeo e atividade.
+O conteúdo de cada aula deve ser útil, prático e explicado como uma mini aula.
+O exemplo visual não deve ser uma imagem externa.
+O exemplo visual deve ser uma representação prática em itens, como wireframe, fluxo, checklist, comparação, estrutura ou sequência.
+O videoSearchQuery deve ser específico e útil para encontrar vídeos reais no YouTube.
+Não gere links falsos.
+Não invente URLs.
 `;
 
   try {
@@ -358,7 +267,7 @@ Para videoQuery, prefira termos em português quando fizer sentido.
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-5.4-mini",
+        model: "gpt-4o-mini",
         input: prompt,
         max_output_tokens: 12000
       })
@@ -401,24 +310,6 @@ Para videoQuery, prefira termos em português quando fizer sentido.
         error: "A IA retornou um formato inválido. Tente gerar novamente."
       });
     }
-
-    const mediaTasks = [];
-
-    course.modules.forEach((module) => {
-      module.lessons.forEach((lesson) => {
-        mediaTasks.push(
-          Promise.all([
-            searchPexelsImage(lesson.imageQuery),
-            searchYouTubeVideo(lesson.videoQuery)
-          ]).then(([image, video]) => {
-            lesson.image = image;
-            lesson.video = video;
-          })
-        );
-      });
-    });
-
-    await Promise.all(mediaTasks);
 
     const html = renderCourseHtml(course);
 
