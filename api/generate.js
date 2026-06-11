@@ -18,42 +18,76 @@ function createYouTubeSearchUrl(query = "") {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
 }
 
+function normalizePosition(position = "center") {
+  const allowedPositions = [
+    "top",
+    "upper-left",
+    "upper-right",
+    "center",
+    "middle-left",
+    "middle-right",
+    "bottom",
+    "bottom-left",
+    "bottom-right"
+  ];
+
+  return allowedPositions.includes(position) ? position : "center";
+}
+
 function renderVisualExample(visualExample) {
   if (!visualExample) return "";
 
-  const items = Array.isArray(visualExample.items) ? visualExample.items : [];
+  const annotations = Array.isArray(visualExample.annotations)
+    ? visualExample.annotations
+    : [];
 
   return `
     <div class="visual-example-card">
       <p class="visual-label"><strong>Exemplo visual prático</strong></p>
+
       <h6>${escapeHtml(visualExample.title || "Exemplo visual")}</h6>
+
       <p>${escapeHtml(visualExample.description || "")}</p>
 
-      <div class="visual-box visual-${escapeHtml(visualExample.type || "estrutura")}">
-        ${items
-          .map(
-            (item, index) => `
-              <div class="visual-item">
-                <span>${index + 1}</span>
-                <p>${escapeHtml(item)}</p>
-              </div>
-            `
-          )
-          .join("")}
+      <div class="a4-visual-canvas">
+        <div class="a4-paper">
+          <div class="a4-paper-label">
+            ${escapeHtml(visualExample.canvasLabel || "Modelo visual")}
+          </div>
+
+          ${annotations
+            .map((annotation, index) => {
+              const position = normalizePosition(annotation.position);
+
+              return `
+                <div class="a4-point a4-${position}">
+                  <span>${index + 1}</span>
+                  <strong>${escapeHtml(annotation.label || `Ponto ${index + 1}`)}</strong>
+                  <small>${escapeHtml(annotation.description || "")}</small>
+                </div>
+              `;
+            })
+            .join("")}
+        </div>
       </div>
     </div>
   `;
 }
 
 function renderCourseHtml(course) {
-  const modulesHtml = course.modules
+  const modules = Array.isArray(course.modules) ? course.modules : [];
+
+  const modulesHtml = modules
     .map((module, moduleIndex) => {
-      const lessonsHtml = module.lessons
+      const lessons = Array.isArray(module.lessons) ? module.lessons : [];
+
+      const lessonsHtml = lessons
         .map((lesson, lessonIndex) => {
-          const youtubeUrl = createYouTubeSearchUrl(
+          const youtubeQuery =
             lesson.videoSearchQuery ||
-              `${course.title} ${module.title} ${lesson.title} aula prática português`
-          );
+            `${course.title} ${module.title} ${lesson.title} aula prática português`;
+
+          const youtubeUrl = createYouTubeSearchUrl(youtubeQuery);
 
           return `
             <div class="course-lesson">
@@ -75,10 +109,12 @@ function renderCourseHtml(course) {
 
               <div class="video-suggestion-card">
                 <p><strong>Vídeo prático sugerido</strong></p>
+
                 <p>${escapeHtml(
                   lesson.videoSuggestion ||
                     "Assista a um vídeo prático relacionado a esta aula."
                 )}</p>
+
                 <a href="${escapeHtml(
                   youtubeUrl
                 )}" target="_blank" rel="noopener noreferrer">
@@ -94,13 +130,11 @@ function renderCourseHtml(course) {
 
       return `
         <details class="course-module">
-          <summary><strong>Módulo ${moduleIndex + 1} — ${escapeHtml(
-        module.title
-      )}</strong></summary>
+          <summary>
+            <strong>Módulo ${moduleIndex + 1} — ${escapeHtml(module.title)}</strong>
+          </summary>
 
-          <p><strong>Resumo do módulo:</strong> ${escapeHtml(
-            module.summary
-          )}</p>
+          <p><strong>Resumo do módulo:</strong> ${escapeHtml(module.summary)}</p>
 
           <p><strong>Aulas do módulo:</strong></p>
 
@@ -114,6 +148,11 @@ function renderCourseHtml(course) {
     })
     .join("");
 
+  const audience = Array.isArray(course.audience) ? course.audience : [];
+  const completionCriteria = Array.isArray(course.completionCriteria)
+    ? course.completionCriteria
+    : [];
+
   return `
     <h2>${escapeHtml(course.title)}</h2>
 
@@ -121,7 +160,7 @@ function renderCourseHtml(course) {
 
     <h3>Para quem é o curso</h3>
     <ul>
-      ${course.audience.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      ${audience.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
     </ul>
 
     <h3>Objetivo principal</h3>
@@ -137,7 +176,7 @@ function renderCourseHtml(course) {
 
     <h3>Critérios de conclusão</h3>
     <ul>
-      ${course.completionCriteria
+      ${completionCriteria
         .map((item) => `<li>${escapeHtml(item)}</li>`)
         .join("")}
     </ul>
@@ -159,7 +198,7 @@ export default async function handler(req, res) {
   if (req.method === "GET") {
     return res.status(200).json({
       message:
-        "API com módulos, exemplos visuais e vídeos sugeridos ativa. Envie POST com { topic }."
+        "API com módulos clicáveis, aulas, visual A4 e vídeos sugeridos ativa. Envie POST com { topic }."
     });
   }
 
@@ -184,7 +223,7 @@ export default async function handler(req, res) {
   }
 
   const prompt = `
-Você é um especialista em criação de cursos online, educação prática e design instrucional.
+Você é um especialista em criação de cursos online, design instrucional e criação de materiais visuais de estudo.
 
 Crie um curso completo em português sobre: "${topic}".
 
@@ -193,6 +232,8 @@ Não use Markdown.
 Não use HTML.
 Não use crases.
 Não escreva explicações fora do JSON.
+Não invente URLs.
+Não gere links falsos.
 
 O JSON precisa seguir exatamente esta estrutura:
 
@@ -220,14 +261,30 @@ O JSON precisa seguir exatamente esta estrutura:
           "example": "Exemplo prático aplicado ao tema",
           "visualExample": {
             "title": "Título do exemplo visual",
-            "type": "wireframe, fluxo, checklist, comparação, mapa, estrutura, tabela ou sequência",
-            "description": "Explique o que o exemplo visual representa",
-            "items": [
-              "Elemento visual 1",
-              "Elemento visual 2",
-              "Elemento visual 3",
-              "Elemento visual 4",
-              "Elemento visual 5"
+            "description": "Explique o que o desenho visual representa",
+            "layoutType": "a4-wireframe",
+            "canvasLabel": "Nome do modelo visual desenhado",
+            "annotations": [
+              {
+                "label": "Nome do ponto visual",
+                "position": "top",
+                "description": "Explique o que este ponto representa no visual"
+              },
+              {
+                "label": "Nome do ponto visual",
+                "position": "upper-left",
+                "description": "Explique o que este ponto representa no visual"
+              },
+              {
+                "label": "Nome do ponto visual",
+                "position": "center",
+                "description": "Explique o que este ponto representa no visual"
+              },
+              {
+                "label": "Nome do ponto visual",
+                "position": "bottom",
+                "description": "Explique o que este ponto representa no visual"
+              }
             ]
           },
           "videoSuggestion": "Descreva qual tipo de vídeo prático ajudaria esta aula",
@@ -250,12 +307,20 @@ O JSON precisa seguir exatamente esta estrutura:
 Regras obrigatórias:
 Crie exatamente 6 módulos.
 Cada módulo deve ter exatamente 3 aulas.
-Cada aula precisa ter objetivo, conteúdo, exemplo, exemplo visual, sugestão de vídeo, termo de busca de vídeo e atividade.
+Cada aula precisa ter objetivo, conteúdo, exemplo prático, exemplo visual, sugestão de vídeo, termo de busca de vídeo e atividade.
 O conteúdo de cada aula deve ser útil, prático e explicado como uma mini aula.
-O exemplo visual não deve ser uma imagem externa.
-O exemplo visual deve ser uma representação prática em itens, como wireframe, fluxo, checklist, comparação, estrutura ou sequência.
+O exemplo visual não deve ser apenas uma lista.
+O exemplo visual deve representar um desenho de página, tela, fluxo, folha A4, checklist visual, mapa ou estrutura prática.
+Use annotations para indicar onde cada ponto fica dentro do visual.
+As posições permitidas em annotations são:
+top, upper-left, upper-right, center, middle-left, middle-right, bottom, bottom-left, bottom-right.
+Use entre 4 e 6 annotations por aula.
+As annotations devem fazer sentido visualmente.
+Exemplo: se a aula for sobre landing page, use pontos como Header, Hero, CTA, Benefícios e Rodapé.
+Exemplo: se a aula for sobre fluxo, use pontos como Entrada, Decisão, Ação, Resultado e Revisão.
+Exemplo: se a aula for sobre comparação, use pontos em lados opostos do visual.
 O videoSearchQuery deve ser específico e útil para encontrar vídeos reais no YouTube.
-Não gere links falsos.
+Não gere links.
 Não invente URLs.
 `;
 
