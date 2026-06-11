@@ -42,7 +42,7 @@ Crie um curso completo em português sobre: "${topic}".
 O conteúdo deve ser retornado em HTML limpo, pronto para ser inserido dentro de uma página Webflow usando innerHTML.
 
 Use SOMENTE estas tags HTML:
-<h2>, <h3>, <h4>, <h5>, <p>, <ul>, <li>, <strong>, <br>
+<h2>, <h3>, <h4>, <h5>, <p>, <ul>, <li>, <strong>, <br>, <details>, <summary>
 
 Não use Markdown.
 Não use #, ##, ###.
@@ -73,35 +73,48 @@ Estrutura obrigatória:
 <h3>Módulos do curso</h3>
 <p>Explique em uma frase como o curso está organizado.</p>
 
-Crie exatamente 6 módulos.
+Agora crie exatamente 6 módulos.
 
-Para cada módulo, use esta estrutura:
+Cada módulo precisa ser clicável/abrível usando esta estrutura EXATA:
 
-<h4>Módulo 1 — Nome do módulo</h4>
+<details class="course-module">
+  <summary><strong>Módulo 1 — Nome do módulo</strong></summary>
 
-<p><strong>Resumo do módulo:</strong> Escreva um resumo claro explicando o que o aluno vai aprender neste módulo.</p>
+  <p><strong>Resumo do módulo:</strong> Escreva um resumo claro explicando o que o aluno vai aprender neste módulo.</p>
 
-<p><strong>Aulas do módulo:</strong></p>
+  <p><strong>Aulas do módulo:</strong></p>
 
-Crie exatamente 4 aulas para cada módulo.
+  <h5>Aula 1 — Título da aula</h5>
+  <p><strong>Objetivo da aula:</strong> Explique o objetivo específico da aula.</p>
+  <p><strong>Conteúdo da aula:</strong> Desenvolva a aula em texto corrido, com explicação real. Não escreva apenas uma frase curta. Explique o conceito como se fosse uma mini aula para um iniciante.</p>
+  <p><strong>Exemplo prático:</strong> Dê um exemplo aplicado ao tema do curso.</p>
+  <p><strong>Atividade:</strong> Crie uma tarefa simples e prática para o aluno executar.</p>
 
-Para cada aula, use esta estrutura:
+  <h5>Aula 2 — Título da aula</h5>
+  <p><strong>Objetivo da aula:</strong> Explique o objetivo específico da aula.</p>
+  <p><strong>Conteúdo da aula:</strong> Desenvolva a aula em texto corrido, com explicação real.</p>
+  <p><strong>Exemplo prático:</strong> Dê um exemplo aplicado ao tema do curso.</p>
+  <p><strong>Atividade:</strong> Crie uma tarefa simples e prática para o aluno executar.</p>
 
-<h5>Aula 1 — Título da aula</h5>
+  <h5>Aula 3 — Título da aula</h5>
+  <p><strong>Objetivo da aula:</strong> Explique o objetivo específico da aula.</p>
+  <p><strong>Conteúdo da aula:</strong> Desenvolva a aula em texto corrido, com explicação real.</p>
+  <p><strong>Exemplo prático:</strong> Dê um exemplo aplicado ao tema do curso.</p>
+  <p><strong>Atividade:</strong> Crie uma tarefa simples e prática para o aluno executar.</p>
 
-<p><strong>Objetivo da aula:</strong> Explique o objetivo específico da aula.</p>
+  <p><strong>Exercício prático do módulo:</strong> Crie um exercício maior que una os aprendizados das aulas do módulo.</p>
+</details>
 
-<p><strong>Conteúdo da aula:</strong> Desenvolva a aula em texto corrido, com explicação real. Não escreva apenas uma frase curta. Explique o conceito como se fosse uma mini aula para um iniciante.</p>
+Regras dos módulos:
+Cada módulo precisa ficar dentro de uma tag <details class="course-module">.
+O título do módulo precisa ficar dentro de <summary>.
+Todo o conteúdo do módulo precisa ficar dentro do mesmo <details>.
+Não coloque aulas fora dos módulos.
+Crie exatamente 3 aulas por módulo.
+Cada aula precisa ter objetivo, conteúdo, exemplo prático e atividade.
+O curso deve parecer um material real de estudo, não apenas uma ementa.
 
-<p><strong>Exemplo prático:</strong> Dê um exemplo aplicado ao tema do curso.</p>
-
-<p><strong>Atividade:</strong> Crie uma tarefa simples e prática para o aluno executar.</p>
-
-Depois das 4 aulas de cada módulo, inclua:
-
-<p><strong>Exercício prático do módulo:</strong> Crie um exercício maior que una os aprendizados das aulas do módulo.</p>
-
-Depois de todos os módulos, inclua:
+Depois dos 6 módulos, inclua:
 
 <h3>Projeto final</h3>
 <p>Descreva um projeto final completo que o aluno deve construir usando tudo o que aprendeu no curso.</p>
@@ -116,13 +129,6 @@ Depois de todos os módulos, inclua:
 
 <h3>Próximos passos</h3>
 <p>Explique o que o aluno pode estudar, criar ou vender depois de concluir o curso.</p>
-
-Regras importantes:
-Cada módulo precisa ter resumo.
-Cada módulo precisa ter exatamente 4 aulas.
-Cada aula precisa ter objetivo, conteúdo, exemplo prático e atividade.
-Não entregue só uma ementa.
-O resultado deve parecer um material real de estudo.
 `;
 
   try {
@@ -133,9 +139,9 @@ O resultado deve parecer um material real de estudo.
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-5.4",
+        model: "gpt-5.4-mini",
         input: prompt,
-        max_output_tokens: 10000
+        max_output_tokens: 12000
       })
     });
 
@@ -165,7 +171,6 @@ O resultado deve parecer um material real de estudo.
       });
     }
 
-    // Limpeza básica caso a IA coloque crases ou bloco html por engano
     course = course
       .replace(/```html/g, "")
       .replace(/```/g, "")
