@@ -34,42 +34,159 @@ function normalizePosition(position = "center") {
   return allowedPositions.includes(position) ? position : "center";
 }
 
-function renderVisualExample(visualExample) {
-  if (!visualExample) return "";
+function renderParagraphs(content) {
+  if (Array.isArray(content)) {
+    return content
+      .map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`)
+      .join("");
+  }
 
+  return `<p>${escapeHtml(content)}</p>`;
+}
+
+function renderLayoutVisual(visualExample) {
   const annotations = Array.isArray(visualExample.annotations)
     ? visualExample.annotations
     : [];
 
   return `
+    <div class="visual-canvas">
+      <div class="layout-board">
+        <div class="layout-board-label">
+          ${escapeHtml(visualExample.canvasLabel || "Modelo visual")}
+        </div>
+
+        ${annotations
+          .map((annotation, index) => {
+            const position = normalizePosition(annotation.position);
+
+            return `
+              <div class="layout-point layout-${position}">
+                <span>${index + 1}</span>
+                <strong>${escapeHtml(annotation.label || `Ponto ${index + 1}`)}</strong>
+                <small>${escapeHtml(annotation.description || "")}</small>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderFlowVisual(visualExample) {
+  const steps = Array.isArray(visualExample.steps) ? visualExample.steps : [];
+
+  return `
+    <div class="flow-visual">
+      ${steps
+        .map(
+          (step, index) => `
+            <div class="flow-step">
+              <span>${index + 1}</span>
+              <div>
+                <strong>${escapeHtml(step.label || `Etapa ${index + 1}`)}</strong>
+                <p>${escapeHtml(step.description || "")}</p>
+              </div>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderComparisonVisual(visualExample) {
+  const columns = Array.isArray(visualExample.columns)
+    ? visualExample.columns
+    : [];
+
+  return `
+    <div class="comparison-visual">
+      ${columns
+        .map(
+          (column) => `
+            <div class="comparison-column">
+              <h6>${escapeHtml(column.title || "Comparação")}</h6>
+              <ul>
+                ${(Array.isArray(column.items) ? column.items : [])
+                  .map((item) => `<li>${escapeHtml(item)}</li>`)
+                  .join("")}
+              </ul>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderDialogueVisual(visualExample) {
+  const dialogue = Array.isArray(visualExample.dialogue)
+    ? visualExample.dialogue
+    : [];
+
+  return `
+    <div class="dialogue-visual">
+      ${dialogue
+        .map(
+          (line, index) => `
+            <div class="dialogue-bubble ${index % 2 === 0 ? "left" : "right"}">
+              <strong>${escapeHtml(line.speaker || "Pessoa")}</strong>
+              <p>${escapeHtml(line.text || "")}</p>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderCardsVisual(visualExample) {
+  const cards = Array.isArray(visualExample.cards) ? visualExample.cards : [];
+
+  return `
+    <div class="cards-visual">
+      ${cards
+        .map(
+          (card, index) => `
+            <div class="visual-card-item">
+              <span>${index + 1}</span>
+              <strong>${escapeHtml(card.label || `Item ${index + 1}`)}</strong>
+              <p>${escapeHtml(card.description || "")}</p>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderVisualExample(visualExample) {
+  if (!visualExample) return "";
+
+  const visualType = visualExample.visualType || "cards";
+
+  let visualHtml = "";
+
+  if (visualType === "layout") {
+    visualHtml = renderLayoutVisual(visualExample);
+  } else if (visualType === "flow") {
+    visualHtml = renderFlowVisual(visualExample);
+  } else if (visualType === "comparison") {
+    visualHtml = renderComparisonVisual(visualExample);
+  } else if (visualType === "dialogue") {
+    visualHtml = renderDialogueVisual(visualExample);
+  } else {
+    visualHtml = renderCardsVisual(visualExample);
+  }
+
+  return `
     <div class="visual-example-card">
       <p class="visual-label"><strong>Exemplo visual prático</strong></p>
-
       <h6>${escapeHtml(visualExample.title || "Exemplo visual")}</h6>
-
       <p>${escapeHtml(visualExample.description || "")}</p>
-
-      <div class="a4-visual-canvas">
-        <div class="a4-paper">
-          <div class="a4-paper-label">
-            ${escapeHtml(visualExample.canvasLabel || "Modelo visual")}
-          </div>
-
-          ${annotations
-            .map((annotation, index) => {
-              const position = normalizePosition(annotation.position);
-
-              return `
-                <div class="a4-point a4-${position}">
-                  <span>${index + 1}</span>
-                  <strong>${escapeHtml(annotation.label || `Ponto ${index + 1}`)}</strong>
-                  <small>${escapeHtml(annotation.description || "")}</small>
-                </div>
-              `;
-            })
-            .join("")}
-        </div>
-      </div>
+      ${visualHtml}
     </div>
   `;
 }
@@ -97,9 +214,15 @@ function renderCourseHtml(course) {
                 lesson.objective
               )}</p>
 
-              <p><strong>Conteúdo da aula:</strong> ${escapeHtml(
-                lesson.content
-              )}</p>
+              <div class="lesson-content">
+                <p><strong>Conteúdo da aula:</strong></p>
+                ${renderParagraphs(lesson.content)}
+              </div>
+
+              <div class="guided-practice">
+                <p><strong>Prática guiada:</strong></p>
+                ${renderParagraphs(lesson.guidedPractice)}
+              </div>
 
               <p><strong>Exemplo prático:</strong> ${escapeHtml(
                 lesson.example
@@ -198,7 +321,7 @@ export default async function handler(req, res) {
   if (req.method === "GET") {
     return res.status(200).json({
       message:
-        "API com módulos clicáveis, aulas, visual A4 e vídeos sugeridos ativa. Envie POST com { topic }."
+        "API com conteúdo detalhado, visuais adaptativos e vídeos sugeridos ativa. Envie POST com { topic }."
     });
   }
 
@@ -223,7 +346,7 @@ export default async function handler(req, res) {
   }
 
   const prompt = `
-Você é um especialista em criação de cursos online, design instrucional e criação de materiais visuais de estudo.
+Você é um especialista em criação de cursos online, design instrucional e aulas práticas.
 
 Crie um curso completo em português sobre: "${topic}".
 
@@ -257,33 +380,59 @@ O JSON precisa seguir exatamente esta estrutura:
         {
           "title": "Título da aula",
           "objective": "Objetivo da aula",
-          "content": "Conteúdo da aula em texto corrido. Explique como uma mini aula para iniciante.",
+          "content": [
+            "Parágrafo 1 da aula, explicando o conceito principal com profundidade.",
+            "Parágrafo 2 da aula, mostrando como esse conceito funciona na prática.",
+            "Parágrafo 3 da aula, explicando cuidados, erros comuns ou detalhes importantes."
+          ],
+          "guidedPractice": [
+            "Passo 1 da prática guiada.",
+            "Passo 2 da prática guiada.",
+            "Passo 3 da prática guiada."
+          ],
           "example": "Exemplo prático aplicado ao tema",
           "visualExample": {
             "title": "Título do exemplo visual",
-            "description": "Explique o que o desenho visual representa",
-            "layoutType": "a4-wireframe",
-            "canvasLabel": "Nome do modelo visual desenhado",
+            "description": "Explique o que o visual representa",
+            "visualType": "layout, flow, comparison, dialogue ou cards",
+            "canvasLabel": "Use somente quando visualType for layout",
             "annotations": [
               {
-                "label": "Nome do ponto visual",
+                "label": "Ponto visual",
                 "position": "top",
-                "description": "Explique o que este ponto representa no visual"
+                "description": "Explicação do ponto visual"
+              }
+            ],
+            "steps": [
+              {
+                "label": "Etapa do fluxo",
+                "description": "Descrição da etapa"
+              }
+            ],
+            "columns": [
+              {
+                "title": "Coluna 1",
+                "items": ["Item 1", "Item 2", "Item 3"]
               },
               {
-                "label": "Nome do ponto visual",
-                "position": "upper-left",
-                "description": "Explique o que este ponto representa no visual"
+                "title": "Coluna 2",
+                "items": ["Item 1", "Item 2", "Item 3"]
+              }
+            ],
+            "cards": [
+              {
+                "label": "Conceito",
+                "description": "Descrição do conceito"
+              }
+            ],
+            "dialogue": [
+              {
+                "speaker": "Pessoa A",
+                "text": "Frase do diálogo"
               },
               {
-                "label": "Nome do ponto visual",
-                "position": "center",
-                "description": "Explique o que este ponto representa no visual"
-              },
-              {
-                "label": "Nome do ponto visual",
-                "position": "bottom",
-                "description": "Explique o que este ponto representa no visual"
+                "speaker": "Pessoa B",
+                "text": "Resposta do diálogo"
               }
             ]
           },
@@ -307,21 +456,47 @@ O JSON precisa seguir exatamente esta estrutura:
 Regras obrigatórias:
 Crie exatamente 6 módulos.
 Cada módulo deve ter exatamente 3 aulas.
-Cada aula precisa ter objetivo, conteúdo, exemplo prático, exemplo visual, sugestão de vídeo, termo de busca de vídeo e atividade.
-O conteúdo de cada aula deve ser útil, prático e explicado como uma mini aula.
-O exemplo visual não deve ser apenas uma lista.
-O exemplo visual deve representar um desenho de página, tela, fluxo, folha A4, checklist visual, mapa ou estrutura prática.
-Use annotations para indicar onde cada ponto fica dentro do visual.
-As posições permitidas em annotations são:
-top, upper-left, upper-right, center, middle-left, middle-right, bottom, bottom-left, bottom-right.
-Use entre 4 e 6 annotations por aula.
-As annotations devem fazer sentido visualmente.
-Exemplo: se a aula for sobre landing page, use pontos como Header, Hero, CTA, Benefícios e Rodapé.
-Exemplo: se a aula for sobre fluxo, use pontos como Entrada, Decisão, Ação, Resultado e Revisão.
-Exemplo: se a aula for sobre comparação, use pontos em lados opostos do visual.
-O videoSearchQuery deve ser específico e útil para encontrar vídeos reais no YouTube.
+Cada aula precisa ter objetivo, conteúdo, prática guiada, exemplo prático, exemplo visual, sugestão de vídeo, termo de busca de vídeo e atividade.
+
+O conteúdo de cada aula precisa ser desenvolvido.
+Não escreva apenas um resumo.
+Cada aula deve ter exatamente 3 parágrafos no campo content.
+Cada parágrafo do campo content deve ter entre 45 e 90 palavras.
+A prática guiada deve ter exatamente 3 passos.
+
+Escolha o visualType conforme o assunto da aula:
+- Use "layout" apenas para páginas, telas, interfaces, design, organização visual ou estruturas espaciais.
+- Use "flow" para processos, passo a passo, jornadas, métodos, receitas, programação, atendimento, funis ou sequências.
+- Use "comparison" para comparar conceitos, opções, antes/depois, certo/errado, vantagens/desvantagens.
+- Use "dialogue" para idiomas, comunicação, vendas, atendimento, entrevistas, conversação ou situações com fala.
+- Use "cards" para conceitos, vocabulário, regras, componentes, ferramentas, pilares ou listas explicativas.
+
+Para visualType "layout":
+- Use annotations.
+- Use posições: top, upper-left, upper-right, center, middle-left, middle-right, bottom, bottom-left, bottom-right.
+- Use entre 4 e 6 annotations.
+
+Para visualType "flow":
+- Use steps.
+- Use entre 4 e 6 steps.
+
+Para visualType "comparison":
+- Use columns.
+- Use exatamente 2 columns.
+- Cada column deve ter entre 3 e 5 items.
+
+Para visualType "dialogue":
+- Use dialogue.
+- Use entre 4 e 6 falas.
+
+Para visualType "cards":
+- Use cards.
+- Use entre 4 e 6 cards.
+
+Não deixe campos importantes vazios.
 Não gere links.
 Não invente URLs.
+O videoSearchQuery deve ser específico e útil para encontrar vídeos reais no YouTube.
 `;
 
   try {
@@ -334,7 +509,7 @@ Não invente URLs.
       body: JSON.stringify({
         model: "gpt-4o-mini",
         input: prompt,
-        max_output_tokens: 12000
+        max_output_tokens: 14000
       })
     });
 
