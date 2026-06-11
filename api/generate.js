@@ -219,10 +219,10 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "GET") {
-    return res.status(200).json({
-      message: "API funcionando. Envie um POST com { topic } para gerar um curso."
-    });
-  }
+  return res.status(200).json({
+    message: "API com imagens e vídeos ativa - versão 2"
+  });
+}
 
   if (req.method !== "POST") {
     return res.status(405).json({
