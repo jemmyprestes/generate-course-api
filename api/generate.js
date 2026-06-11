@@ -15,12 +15,17 @@ function cleanJsonText(text) {
 }
 
 async function searchPexelsImage(query) {
-  if (!process.env.PEXELS_API_KEY || !query) return null;
+  if (!process.env.PEXELS_API_KEY || !query) {
+    return {
+      fallback: true,
+      searchUrl: `https://www.pexels.com/search/${encodeURIComponent(query || "")}/`
+    };
+  }
 
   try {
     const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(
       query
-    )}&per_page=1&orientation=landscape&locale=pt-BR`;
+    )}&per_page=1&orientation=landscape`;
 
     const response = await fetch(url, {
       headers: {
@@ -28,14 +33,30 @@ async function searchPexelsImage(query) {
       }
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Erro Pexels API:", response.status, errorText);
+
+      return {
+        fallback: true,
+        searchUrl: `https://www.pexels.com/search/${encodeURIComponent(query)}/`
+      };
+    }
 
     const data = await response.json();
     const photo = data.photos?.[0];
 
-    if (!photo) return null;
+    if (!photo) {
+      console.log("Nenhuma imagem encontrada para:", query);
+
+      return {
+        fallback: true,
+        searchUrl: `https://www.pexels.com/search/${encodeURIComponent(query)}/`
+      };
+    }
 
     return {
+      fallback: false,
       src: photo.src?.large || photo.src?.medium || photo.src?.original,
       alt: photo.alt || query,
       photographer: photo.photographer || "",
@@ -43,7 +64,11 @@ async function searchPexelsImage(query) {
     };
   } catch (error) {
     console.error("Erro ao buscar imagem no Pexels:", error);
-    return null;
+
+    return {
+      fallback: true,
+      searchUrl: `https://www.pexels.com/search/${encodeURIComponent(query)}/`
+    };
   }
 }
 
@@ -89,23 +114,37 @@ function renderCourseHtml(course) {
     .map((module, moduleIndex) => {
       const lessonsHtml = module.lessons
         .map((lesson, lessonIndex) => {
-          const imageHtml = lesson.image
-            ? `
-              <div class="media-card">
-                <p><strong>Imagem de apoio</strong></p>
-                <img src="${escapeHtml(lesson.image.src)}" alt="${escapeHtml(
-                lesson.image.alt
-              )}" loading="lazy" />
-                ${
-                  lesson.image.photographer
-                    ? `<p class="media-credit">Foto: ${escapeHtml(
-                        lesson.image.photographer
-                      )}</p>`
-                    : ""
-                }
-              </div>
-            `
-            : "";
+          const imageHtml = lesson.image?.src
+  ? `
+    <div class="media-card">
+      <p><strong>Imagem de apoio</strong></p>
+      <img src="${escapeHtml(lesson.image.src)}" alt="${escapeHtml(
+        lesson.image.alt
+      )}" loading="lazy" />
+      ${
+        lesson.image.photographer
+          ? `<p class="media-credit">Foto: ${escapeHtml(
+              lesson.image.photographer
+            )}</p>`
+          : ""
+      }
+    </div>
+  `
+  : lesson.image?.searchUrl
+    ? `
+      <div class="media-card">
+        <p><strong>Imagem de apoio</strong></p>
+        <p>Não consegui carregar uma imagem automaticamente, mas você pode abrir uma busca pronta:</p>
+        <a href="${escapeHtml(lesson.image.searchUrl)}" target="_blank" rel="noopener noreferrer">
+          Buscar imagem para esta aula
+        </a>
+      </div>
+    `
+    : `
+      <div class="media-card">
+        <p><strong>Imagem de apoio:</strong> nenhuma imagem encontrada para esta aula.</p>
+      </div>
+    `;
 
           const videoHtml = lesson.video
             ? `
