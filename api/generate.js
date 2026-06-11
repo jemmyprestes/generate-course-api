@@ -94,14 +94,17 @@ Cada módulo precisa ser clicável/abrível usando esta estrutura EXATA:
   <p><strong>Objetivo da aula:</strong> Explique o objetivo específico da aula.</p>
   <p><strong>Conteúdo da aula:</strong> Desenvolva a aula em texto corrido, com explicação real.</p>
   <p><strong>Exemplo prático:</strong> Dê um exemplo aplicado ao tema do curso.</p>
+  <p><strong>Imagem sugerida:</strong> Descreva uma imagem útil para complementar esta aula. Se a aula não precisar de imagem, escreva "Não necessário".</p>
+  <p><strong>Vídeo sugerido:</strong> Descreva um vídeo curto ou demonstração prática que ajudaria o aluno. Se a aula não precisar de vídeo, escreva "Não necessário".</p>
   <p><strong>Atividade:</strong> Crie uma tarefa simples e prática para o aluno executar.</p>
 
   <h5>Aula 3 — Título da aula</h5>
   <p><strong>Objetivo da aula:</strong> Explique o objetivo específico da aula.</p>
   <p><strong>Conteúdo da aula:</strong> Desenvolva a aula em texto corrido, com explicação real.</p>
   <p><strong>Exemplo prático:</strong> Dê um exemplo aplicado ao tema do curso.</p>
+  <p><strong>Imagem sugerida:</strong> Descreva uma imagem útil para complementar esta aula. Se a aula não precisar de imagem, escreva "Não necessário".</p>
+  <p><strong>Vídeo sugerido:</strong> Descreva um vídeo curto ou demonstração prática que ajudaria o aluno. Se a aula não precisar de vídeo, escreva "Não necessário".</p>
   <p><strong>Atividade:</strong> Crie uma tarefa simples e prática para o aluno executar.</p>
-
   <p><strong>Exercício prático do módulo:</strong> Crie um exercício maior que una os aprendizados das aulas do módulo.</p>
 </details>
 
