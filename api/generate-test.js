@@ -1,10 +1,4 @@
-const OpenAI = require("openai");
-
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   // ============================
   // CORS
   // ============================
@@ -24,12 +18,12 @@ module.exports = async function handler(req, res) {
     "Content-Type, Authorization"
   );
 
-  // Responder ao preflight do navegador
+  // Preflight CORS
   if (req.method === "OPTIONS") {
-    return res.status(200).end();
+    return res.status(204).end();
   }
 
-  // Permitir apenas POST
+  // Apenas POST
   if (req.method !== "POST") {
     return res.status(405).json({
       error: "Método não permitido. Use POST."
@@ -37,7 +31,10 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    // Verificar API Key
+    // ============================
+    // API KEY
+    // ============================
+
     if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({
         error: "OPENAI_API_KEY não configurada na Vercel."
@@ -53,30 +50,23 @@ module.exports = async function handler(req, res) {
       numberOfQuestions = 10
     } = req.body || {};
 
-    /*
-     * Aceitamos tanto "course" quanto "content".
-     * Isso deixa a API compatível com o código atual
-     * da página Teste Final.
-     */
+    // ============================
+    // CONTEÚDO DO CURSO
+    // ============================
+
     let rawCourseContent = course || content;
 
-    // Se o conteúdo vier como objeto/JSON
     if (
       rawCourseContent &&
       typeof rawCourseContent !== "string"
     ) {
-      try {
-        rawCourseContent = JSON.stringify(
-          rawCourseContent,
-          null,
-          2
-        );
-      } catch {
-        rawCourseContent = String(rawCourseContent);
-      }
+      rawCourseContent = JSON.stringify(
+        rawCourseContent,
+        null,
+        2
+      );
     }
 
-    // Verificar conteúdo do curso
     if (
       !rawCourseContent ||
       typeof rawCourseContent !== "string" ||
@@ -87,7 +77,6 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Limitar quantidade de perguntas
     const questionCount = Math.min(
       Math.max(
         parseInt(numberOfQuestions, 10) || 10,
@@ -96,7 +85,6 @@ module.exports = async function handler(req, res) {
       20
     );
 
-    // Limitar tamanho enviado para a IA
     const courseContent = rawCourseContent
       .trim()
       .slice(0, 50000);
@@ -107,10 +95,14 @@ module.exports = async function handler(req, res) {
       title ||
       "Curso";
 
+    // ============================
+    // PROMPTS
+    // ============================
+
     const systemPrompt = `
 Você é um especialista em avaliação educacional.
 
-Sua tarefa é criar um TESTE FINAL baseado EXCLUSIVAMENTE no conteúdo do curso fornecido pelo usuário.
+Sua tarefa é criar um TESTE FINAL baseado EXCLUSIVAMENTE no conteúdo do curso fornecido.
 
 REGRAS OBRIGATÓRIAS:
 
@@ -121,18 +113,14 @@ REGRAS OBRIGATÓRIAS:
 5. Deve existir apenas UMA resposta correta.
 6. Misture perguntas fáceis, médias e difíceis.
 7. Evite perguntas ambíguas.
-8. Não faça perguntas cuja resposta possa ser interpretada de duas maneiras.
-9. Não repita a mesma pergunta.
-10. As alternativas incorretas devem parecer plausíveis.
-11. Não revele a resposta correta no texto da pergunta.
-12. Não inclua explicações da resposta correta.
-13. Não inclua a resposta correta em texto fora do campo "correctAnswer".
-14. Retorne SOMENTE JSON válido.
-15. O campo "correctAnswer" deve ser um número de 0 a 3 indicando a posição da alternativa correta.
-16. A posição da resposta correta deve variar entre as perguntas.
-17. Não coloque sempre a resposta correta na mesma posição.
+8. Não repita perguntas.
+9. As alternativas incorretas devem ser plausíveis.
+10. Não revele a resposta correta no texto da pergunta.
+11. O campo "correctAnswer" deve ser um número de 0 a 3.
+12. A posição da resposta correta deve variar.
+13. Retorne SOMENTE JSON válido.
 
-ESTRUTURA OBRIGATÓRIA:
+ESTRUTURA:
 
 {
   "questions": [
@@ -154,35 +142,66 @@ ESTRUTURA OBRIGATÓRIA:
 TÍTULO DO CURSO:
 ${courseTitle}
 
-CONTEÚDO COMPLETO DO CURSO:
+CONTEÚDO DO CURSO:
 
 ${courseContent}
 
-Crie agora o teste final seguindo rigorosamente todas as regras.
+Crie agora o teste final.
 `;
 
-    const completion =
-      await client.chat.completions.create({
-        model: "gpt-4o-mini",
-        temperature: 0.7,
-        max_tokens: 4000,
-        response_format: {
-          type: "json_object"
+    // ============================
+    // OPENAI
+    // ============================
+
+    const openAIResponse = await fetch(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+          Authorization:
+            `Bearer ${process.env.OPENAI_API_KEY}`
         },
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
+
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          temperature: 0.7,
+          max_tokens: 4000,
+
+          response_format: {
+            type: "json_object"
           },
-          {
-            role: "user",
-            content: userPrompt
-          }
-        ]
+
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt
+            },
+            {
+              role: "user",
+              content: userPrompt
+            }
+          ]
+        })
+      }
+    );
+
+    const openAIData = await openAIResponse.json();
+
+    if (!openAIResponse.ok) {
+      console.error(
+        "Erro OpenAI:",
+        openAIData
+      );
+
+      return res.status(500).json({
+        error: "Erro ao gerar o teste com a IA."
       });
+    }
 
     const rawContent =
-      completion.choices?.[0]?.message?.content;
+      openAIData.choices?.[0]?.message?.content;
 
     if (!rawContent) {
       return res.status(500).json({
@@ -190,14 +209,18 @@ Crie agora o teste final seguindo rigorosamente todas as regras.
       });
     }
 
+    // ============================
+    // INTERPRETAR JSON
+    // ============================
+
     let test;
 
     try {
       test = JSON.parse(rawContent);
-    } catch (parseError) {
+    } catch (error) {
       console.error(
-        "Erro ao interpretar JSON da OpenAI:",
-        parseError
+        "Erro ao interpretar teste:",
+        error
       );
 
       return res.status(500).json({
@@ -205,15 +228,17 @@ Crie agora o teste final seguindo rigorosamente todas as regras.
       });
     }
 
-    // Validação
+    // ============================
+    // VALIDAR TESTE
+    // ============================
+
     if (
       !test ||
       !Array.isArray(test.questions) ||
       test.questions.length !== questionCount
     ) {
       return res.status(500).json({
-        error:
-          "O teste gerado possui uma estrutura inválida."
+        error: "Estrutura inválida do teste."
       });
     }
 
@@ -228,10 +253,14 @@ Crie agora o teste final seguindo rigorosamente todas as regras.
       ) {
         return res.status(500).json({
           error:
-            "Uma ou mais perguntas foram geradas em formato inválido."
+            "Uma ou mais perguntas possuem formato inválido."
         });
       }
     }
+
+    // ============================
+    // ID DO TESTE
+    // ============================
 
     const testId =
       "TEST-" +
@@ -241,7 +270,7 @@ Crie agora o teste final seguindo rigorosamente todas as regras.
         .toString(36)
         .substring(2, 10);
 
-    // Versão pública
+    // Não enviar correctAnswer ao navegador
     const publicQuestions =
       test.questions.map(
         (question, index) => ({
@@ -250,6 +279,10 @@ Crie agora o teste final seguindo rigorosamente todas as regras.
           options: question.options
         })
       );
+
+    // ============================
+    // RESPOSTA
+    // ============================
 
     return res.status(200).json({
       success: true,
@@ -261,16 +294,12 @@ Crie agora o teste final seguindo rigorosamente todas as regras.
 
   } catch (error) {
     console.error(
-      "Erro em /api/generate-test:",
+      "Erro em generate-test:",
       error
     );
 
     return res.status(500).json({
-      error: "Erro interno ao gerar o teste.",
-      details:
-        process.env.NODE_ENV === "development"
-          ? error.message
-          : undefined
+      error: "Erro interno ao gerar o teste."
     });
   }
-};
+}
