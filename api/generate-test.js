@@ -5,6 +5,30 @@ const client = new OpenAI({
 });
 
 module.exports = async function handler(req, res) {
+  // ============================
+  // CORS
+  // ============================
+
+  res.setHeader(
+    "Access-Control-Allow-Origin",
+    "https://e-learn-landing.webflow.io"
+  );
+
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "POST, OPTIONS"
+  );
+
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization"
+  );
+
+  // Responder ao preflight do navegador
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   // Permitir apenas POST
   if (req.method !== "POST") {
     return res.status(405).json({
@@ -20,10 +44,44 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const { course, numberOfQuestions = 10 } = req.body || {};
+    const {
+      course,
+      content,
+      topic,
+      courseTopic,
+      title,
+      numberOfQuestions = 10
+    } = req.body || {};
+
+    /*
+     * Aceitamos tanto "course" quanto "content".
+     * Isso deixa a API compatível com o código atual
+     * da página Teste Final.
+     */
+    let rawCourseContent = course || content;
+
+    // Se o conteúdo vier como objeto/JSON
+    if (
+      rawCourseContent &&
+      typeof rawCourseContent !== "string"
+    ) {
+      try {
+        rawCourseContent = JSON.stringify(
+          rawCourseContent,
+          null,
+          2
+        );
+      } catch {
+        rawCourseContent = String(rawCourseContent);
+      }
+    }
 
     // Verificar conteúdo do curso
-    if (!course || typeof course !== "string" || !course.trim()) {
+    if (
+      !rawCourseContent ||
+      typeof rawCourseContent !== "string" ||
+      !rawCourseContent.trim()
+    ) {
       return res.status(400).json({
         error: "O conteúdo do curso é obrigatório."
       });
@@ -31,15 +89,23 @@ module.exports = async function handler(req, res) {
 
     // Limitar quantidade de perguntas
     const questionCount = Math.min(
-      Math.max(parseInt(numberOfQuestions, 10) || 10, 5),
+      Math.max(
+        parseInt(numberOfQuestions, 10) || 10,
+        5
+      ),
       20
     );
 
-    /*
-     * Limitar o tamanho enviado para a IA.
-     * Isso evita enviar conteúdo excessivamente grande.
-     */
-    const courseContent = course.trim().slice(0, 50000);
+    // Limitar tamanho enviado para a IA
+    const courseContent = rawCourseContent
+      .trim()
+      .slice(0, 50000);
+
+    const courseTitle =
+      topic ||
+      courseTopic ||
+      title ||
+      "Curso";
 
     const systemPrompt = `
 Você é um especialista em avaliação educacional.
@@ -85,6 +151,9 @@ ESTRUTURA OBRIGATÓRIA:
 `;
 
     const userPrompt = `
+TÍTULO DO CURSO:
+${courseTitle}
+
 CONTEÚDO COMPLETO DO CURSO:
 
 ${courseContent}
@@ -92,26 +161,28 @@ ${courseContent}
 Crie agora o teste final seguindo rigorosamente todas as regras.
 `;
 
-    const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.7,
-      max_tokens: 4000,
-      response_format: {
-        type: "json_object"
-      },
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt
+    const completion =
+      await client.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.7,
+        max_tokens: 4000,
+        response_format: {
+          type: "json_object"
         },
-        {
-          role: "user",
-          content: userPrompt
-        }
-      ]
-    });
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt
+          },
+          {
+            role: "user",
+            content: userPrompt
+          }
+        ]
+      });
 
-    const rawContent = completion.choices?.[0]?.message?.content;
+    const rawContent =
+      completion.choices?.[0]?.message?.content;
 
     if (!rawContent) {
       return res.status(500).json({
@@ -124,21 +195,25 @@ Crie agora o teste final seguindo rigorosamente todas as regras.
     try {
       test = JSON.parse(rawContent);
     } catch (parseError) {
-      console.error("Erro ao interpretar JSON da OpenAI:", parseError);
+      console.error(
+        "Erro ao interpretar JSON da OpenAI:",
+        parseError
+      );
 
       return res.status(500).json({
         error: "A IA retornou um formato inválido."
       });
     }
 
-    // Validação adicional de segurança
+    // Validação
     if (
       !test ||
       !Array.isArray(test.questions) ||
       test.questions.length !== questionCount
     ) {
       return res.status(500).json({
-        error: "O teste gerado possui uma estrutura inválida."
+        error:
+          "O teste gerado possui uma estrutura inválida."
       });
     }
 
@@ -152,46 +227,29 @@ Crie agora o teste final seguindo rigorosamente todas as regras.
         question.correctAnswer > 3
       ) {
         return res.status(500).json({
-          error: "Uma ou mais perguntas foram geradas em formato inválido."
+          error:
+            "Uma ou mais perguntas foram geradas em formato inválido."
         });
       }
     }
-
-    /*
-     * IMPORTANTE:
-     *
-     * Neste momento não enviamos o correctAnswer para o navegador.
-     *
-     * O navegador receberá apenas:
-     * question
-     * options
-     *
-     * A resposta correta fica armazenada temporariamente
-     * no servidor através de um ID de teste.
-     *
-     * Para uma implementação realmente segura e persistente,
-     * o próximo passo será guardar essas respostas em banco de dados.
-     */
 
     const testId =
       "TEST-" +
       Date.now() +
       "-" +
-      Math.random().toString(36).substring(2, 10);
+      Math.random()
+        .toString(36)
+        .substring(2, 10);
 
-    // Versão pública das perguntas
-    const publicQuestions = test.questions.map((question, index) => ({
-      id: index + 1,
-      question: question.question,
-      options: question.options
-    }));
-
-    /*
-     * Por enquanto devolvemos o testId e as perguntas.
-     *
-     * A correção segura será feita posteriormente através
-     * de uma rota /api/submit-test ligada ao banco de dados.
-     */
+    // Versão pública
+    const publicQuestions =
+      test.questions.map(
+        (question, index) => ({
+          id: index + 1,
+          question: question.question,
+          options: question.options
+        })
+      );
 
     return res.status(200).json({
       success: true,
@@ -202,7 +260,10 @@ Crie agora o teste final seguindo rigorosamente todas as regras.
     });
 
   } catch (error) {
-    console.error("Erro em /api/generate-test:", error);
+    console.error(
+      "Erro em /api/generate-test:",
+      error
+    );
 
     return res.status(500).json({
       error: "Erro interno ao gerar o teste.",
