@@ -18,12 +18,10 @@ export default async function handler(req, res) {
     "Content-Type, Authorization"
   );
 
-  // Preflight CORS
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
 
-  // Apenas POST
   if (req.method !== "POST") {
     return res.status(405).json({
       error: "Método não permitido. Use POST."
@@ -32,14 +30,40 @@ export default async function handler(req, res) {
 
   try {
     // ============================
-    // API KEY
+    // VARIÁVEIS DE AMBIENTE
     // ============================
 
-    if (!process.env.OPENAI_API_KEY) {
+    const OPENAI_API_KEY =
+      process.env.OPENAI_API_KEY;
+
+    const SUPABASE_URL =
+      process.env.SUPABASE_URL;
+
+    const SUPABASE_SERVICE_ROLE_KEY =
+      process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+
+    if (!OPENAI_API_KEY) {
       return res.status(500).json({
-        error: "OPENAI_API_KEY não configurada na Vercel."
+        error: "OPENAI_API_KEY não configurada."
       });
     }
+
+
+    if (
+      !SUPABASE_URL ||
+      !SUPABASE_SERVICE_ROLE_KEY
+    ) {
+      return res.status(500).json({
+        error:
+          "Configuração do Supabase incompleta na Vercel."
+      });
+    }
+
+
+    // ============================
+    // DADOS RECEBIDOS
+    // ============================
 
     const {
       course,
@@ -50,22 +74,23 @@ export default async function handler(req, res) {
       numberOfQuestions = 10
     } = req.body || {};
 
-    // ============================
-    // CONTEÚDO DO CURSO
-    // ============================
 
-    let rawCourseContent = course || content;
+    let rawCourseContent =
+      course || content;
+
 
     if (
       rawCourseContent &&
       typeof rawCourseContent !== "string"
     ) {
-      rawCourseContent = JSON.stringify(
-        rawCourseContent,
-        null,
-        2
-      );
+      rawCourseContent =
+        JSON.stringify(
+          rawCourseContent,
+          null,
+          2
+        );
     }
+
 
     if (
       !rawCourseContent ||
@@ -73,21 +98,34 @@ export default async function handler(req, res) {
       !rawCourseContent.trim()
     ) {
       return res.status(400).json({
-        error: "O conteúdo do curso é obrigatório."
+        error:
+          "O conteúdo do curso é obrigatório."
       });
     }
 
-    const questionCount = Math.min(
-      Math.max(
-        parseInt(numberOfQuestions, 10) || 10,
-        5
-      ),
-      20
-    );
 
-    const courseContent = rawCourseContent
-      .trim()
-      .slice(0, 50000);
+    // ============================
+    // QUANTIDADE DE PERGUNTAS
+    // ============================
+
+    const questionCount =
+      Math.min(
+        Math.max(
+          parseInt(
+            numberOfQuestions,
+            10
+          ) || 10,
+          5
+        ),
+        20
+      );
+
+
+    const courseContent =
+      rawCourseContent
+        .trim()
+        .slice(0, 50000);
+
 
     const courseTitle =
       topic ||
@@ -95,8 +133,9 @@ export default async function handler(req, res) {
       title ||
       "Curso";
 
+
     // ============================
-    // PROMPTS
+    // PROMPT
     // ============================
 
     const systemPrompt = `
@@ -120,7 +159,7 @@ REGRAS OBRIGATÓRIAS:
 12. A posição da resposta correta deve variar.
 13. Retorne SOMENTE JSON válido.
 
-ESTRUTURA:
+ESTRUTURA OBRIGATÓRIA:
 
 {
   "questions": [
@@ -138,76 +177,94 @@ ESTRUTURA:
 }
 `;
 
+
     const userPrompt = `
 TÍTULO DO CURSO:
+
 ${courseTitle}
 
 CONTEÚDO DO CURSO:
 
 ${courseContent}
 
-Crie agora o teste final.
+Crie agora o teste final seguindo rigorosamente as regras.
 `;
 
+
     // ============================
-    // OPENAI
+    // GERAR TESTE COM OPENAI
     // ============================
 
-    const openAIResponse = await fetch(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
+    const openAIResponse =
+      await fetch(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          method: "POST",
 
-        headers: {
-          "Content-Type": "application/json",
-          Authorization:
-            `Bearer ${process.env.OPENAI_API_KEY}`
-        },
+          headers: {
+            "Content-Type":
+              "application/json",
 
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          temperature: 0.7,
-          max_tokens: 4000,
-
-          response_format: {
-            type: "json_object"
+            Authorization:
+              `Bearer ${OPENAI_API_KEY}`
           },
 
-          messages: [
-            {
-              role: "system",
-              content: systemPrompt
-            },
-            {
-              role: "user",
-              content: userPrompt
-            }
-          ]
-        })
-      }
-    );
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
 
-    const openAIData = await openAIResponse.json();
+            temperature: 0.7,
+
+            max_tokens: 4000,
+
+            response_format: {
+              type: "json_object"
+            },
+
+            messages: [
+              {
+                role: "system",
+                content: systemPrompt
+              },
+              {
+                role: "user",
+                content: userPrompt
+              }
+            ]
+          })
+        }
+      );
+
+
+    const openAIData =
+      await openAIResponse.json();
+
 
     if (!openAIResponse.ok) {
       console.error(
-        "Erro OpenAI:",
+        "ERRO OPENAI:",
         openAIData
       );
 
       return res.status(500).json({
-        error: "Erro ao gerar o teste com a IA."
+        error:
+          "Erro ao gerar o teste com a IA."
       });
     }
 
+
     const rawContent =
-      openAIData.choices?.[0]?.message?.content;
+      openAIData
+        .choices?.[0]
+        ?.message?.content;
+
 
     if (!rawContent) {
       return res.status(500).json({
-        error: "A OpenAI não retornou o teste."
+        error:
+          "A OpenAI não retornou o teste."
       });
     }
+
 
     // ============================
     // INTERPRETAR JSON
@@ -216,17 +273,21 @@ Crie agora o teste final.
     let test;
 
     try {
-      test = JSON.parse(rawContent);
+      test =
+        JSON.parse(rawContent);
     } catch (error) {
+
       console.error(
-        "Erro ao interpretar teste:",
+        "ERRO JSON:",
         error
       );
 
       return res.status(500).json({
-        error: "A IA retornou um formato inválido."
+        error:
+          "A IA retornou um formato inválido."
       });
     }
+
 
     // ============================
     // VALIDAR TESTE
@@ -235,31 +296,45 @@ Crie agora o teste final.
     if (
       !test ||
       !Array.isArray(test.questions) ||
-      test.questions.length !== questionCount
+      test.questions.length !==
+        questionCount
     ) {
       return res.status(500).json({
-        error: "Estrutura inválida do teste."
+        error:
+          "Estrutura inválida do teste."
       });
     }
 
-    for (const question of test.questions) {
+
+    for (
+      const question
+      of test.questions
+    ) {
+
       if (
         !question.question ||
-        !Array.isArray(question.options) ||
+        !Array.isArray(
+          question.options
+        ) ||
         question.options.length !== 4 ||
-        !Number.isInteger(question.correctAnswer) ||
+        !Number.isInteger(
+          question.correctAnswer
+        ) ||
         question.correctAnswer < 0 ||
         question.correctAnswer > 3
       ) {
+
         return res.status(500).json({
           error:
             "Uma ou mais perguntas possuem formato inválido."
         });
+
       }
     }
 
+
     // ============================
-    // ID DO TESTE
+    // CRIAR ID DO TESTE
     // ============================
 
     const testId =
@@ -270,36 +345,127 @@ Crie agora o teste final.
         .toString(36)
         .substring(2, 10);
 
-    // Não enviar correctAnswer ao navegador
+
+    // ============================
+    // GABARITO PRIVADO
+    // ============================
+
+    const answerKey =
+      test.questions.map(
+        (question, index) => ({
+          id: index + 1,
+          correctAnswer:
+            question.correctAnswer
+        })
+      );
+
+
+    // ============================
+    // SALVAR GABARITO NO SUPABASE
+    // ============================
+
+    const saveKeyResponse =
+      await fetch(
+        `${SUPABASE_URL}/rest/v1/course_test_keys`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            "apikey":
+              SUPABASE_SERVICE_ROLE_KEY,
+
+            "Authorization":
+              `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+
+            "Prefer":
+              "return=minimal"
+          },
+
+          body: JSON.stringify({
+            test_id: testId,
+            answers: answerKey
+          })
+        }
+      );
+
+
+    if (!saveKeyResponse.ok) {
+
+      const saveError =
+        await saveKeyResponse.text();
+
+
+      console.error(
+        "ERRO AO SALVAR GABARITO:",
+        saveError
+      );
+
+
+      return res.status(500).json({
+        error:
+          "Não foi possível salvar o gabarito do teste."
+      });
+    }
+
+
+    console.log(
+      "GABARITO SALVO:",
+      testId
+    );
+
+
+    // ============================
+    // VERSÃO PÚBLICA
+    // ============================
+
     const publicQuestions =
       test.questions.map(
         (question, index) => ({
           id: index + 1,
-          question: question.question,
-          options: question.options
+
+          question:
+            question.question,
+
+          options:
+            question.options
         })
       );
 
+
     // ============================
-    // RESPOSTA
+    // RESPOSTA PARA O WEBFLOW
     // ============================
 
     return res.status(200).json({
       success: true,
+
       testId,
-      questions: publicQuestions,
-      totalQuestions: questionCount,
+
+      questions:
+        publicQuestions,
+
+      totalQuestions:
+        questionCount,
+
       passingScore: 70
     });
 
+
   } catch (error) {
+
     console.error(
-      "Erro em generate-test:",
+      "ERRO EM GENERATE-TEST:",
       error
     );
 
+
     return res.status(500).json({
-      error: "Erro interno ao gerar o teste."
+      error:
+        "Erro interno ao gerar o teste."
     });
+
   }
 }
