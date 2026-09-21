@@ -505,9 +505,8 @@ function renderVisualExample(visual) {
   }
 
 
-  const type =
-    visual.visualType || "cards";
-
+ const type =
+  visual.visualType || "";
 
   let visualHtml = "";
 
@@ -526,12 +525,13 @@ function renderVisualExample(visual) {
 
     visualHtml =
       renderComparisonVisual(visual);
-
+  
   } else if (type === "dialogue") {
 
     visualHtml =
       renderDialogueVisual(visual);
 
+  }
 
   if (!visualHtml) {
     return "";
