@@ -532,13 +532,6 @@ function renderVisualExample(visual) {
     visualHtml =
       renderDialogueVisual(visual);
 
-  } else if (type === "cards") {
-
-    visualHtml =
-      renderCardsVisual(visual);
-
-  }
-
 
   if (!visualHtml) {
     return "";
@@ -1170,51 +1163,151 @@ VISUAIS
 
 Um visual NÃO é obrigatório.
 
-Use visual somente quando ele realmente
-facilitar a compreensão.
+IMPORTANTE:
+Não considere caixas de texto, cartões, listas estilizadas
+ou grupos de frases como um recurso visual.
 
-Se não houver benefício pedagógico,
-use:
+Um visual só deve existir quando a organização espacial,
+a sequência, as relações, a comparação ou a estrutura
+ajudarem o aluno a compreender algo que seria menos
+claro apenas em texto.
+
+Se não houver ganho real de compreensão, use:
 
 "visualExample": null
 
 
-Quando houver benefício, escolha:
+TIPOS PERMITIDOS
 
-flow:
-processos, sequências ou relações de etapas.
+"flow"
+Use para processos, transformações, sequências,
+causa e efeito ou etapas conectadas.
 
-comparison:
-comparação entre dois conceitos,
-métodos ou situações.
+"comparison"
+Use quando duas situações, técnicas, conceitos
+ou estados precisam ser comparados visualmente.
 
-cards:
-componentes, categorias ou elementos
-que precisam ser diferenciados.
+"layout"
+Use quando posição, organização espacial,
+partes de uma estrutura ou relações físicas
+forem essenciais.
 
-dialogue:
-somente quando uma interação verbal
-for realmente importante para a competência.
-
-layout:
-somente quando posição ou organização
-espacial for essencial.
+"dialogue"
+Use SOMENTE quando a interação entre pessoas
+for parte real do conhecimento ensinado.
 
 
-Para flow:
-use de 3 a 6 steps.
+NÃO USE
 
-Para comparison:
-use exatamente 2 columns.
+Não use "cards".
 
-Para cards:
-use de 3 a 6 cards.
+Não transforme uma lista em visual.
 
-Para dialogue:
-use de 4 a 6 falas.
+Não crie:
+"Item 1"
+"Item 2"
+"Item 3"
+ou rótulos genéricos semelhantes.
 
-Para layout:
-use de 3 a 6 annotations.
+Todo elemento deve possuir um nome semântico
+relacionado diretamente ao assunto.
+
+Exemplos de bons rótulos:
+
+"Proteína"
+"Microespuma"
+"Temperatura"
+"Extração"
+"Moagem fina"
+"Fluxo rápido"
+
+Exemplos ruins:
+
+"Item 1"
+"Ponto 2"
+"Conceito 3"
+"Etapa importante"
+
+
+RELAÇÕES VISUAIS
+
+O visual deve mostrar pelo menos uma destas relações:
+
+- sequência;
+- causa e efeito;
+- transformação;
+- hierarquia;
+- contraste;
+- posição;
+- dependência;
+- conexão entre componentes.
+
+Não repita simplesmente frases que já aparecem
+nos parágrafos da aula.
+
+
+FLOW
+
+Use de 3 a 6 etapas conectadas.
+
+Cada etapa deve ter um nome específico e curto.
+
+A descrição deve explicar a relação com a etapa
+anterior ou seguinte.
+
+
+COMPARISON
+
+Use exatamente 2 lados.
+
+Os títulos devem representar aquilo que está
+sendo comparado.
+
+Exemplo:
+
+"Subextração"
+versus
+"Superextração"
+
+e não:
+
+"Opção 1"
+versus
+"Opção 2".
+
+
+LAYOUT
+
+Use de 3 a 6 elementos.
+
+Cada elemento deve representar uma parte real
+do objeto, sistema ou estrutura explicada.
+
+A posição dos elementos deve possuir significado.
+
+
+DIALOGUE
+
+Use somente quando fala, atendimento,
+comunicação ou interação forem parte
+da competência ensinada.
+
+Use entre 4 e 6 falas.
+
+
+REGRA DE DECISÃO
+
+Antes de criar visualExample, pergunte internamente:
+
+"Este visual ensina uma relação que seria mais difícil
+perceber lendo somente os parágrafos?"
+
+Se a resposta for não:
+
+"visualExample": null
+
+É preferível não mostrar visual algum a mostrar
+um conjunto de caixas contendo texto.
 
 
 PRECISÃO
@@ -1299,8 +1392,6 @@ use esta estrutura:
   ],
 
   "columns": [],
-
-  "cards": [],
 
   "dialogue": []
 }
