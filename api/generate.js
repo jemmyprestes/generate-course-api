@@ -301,46 +301,76 @@ function renderLayoutVisual(visual) {
 
 
 function renderFlowVisual(visual) {
-
   const steps =
     Array.isArray(visual.steps)
       ? visual.steps
       : [];
 
-
   if (!steps.length) {
     return "";
   }
 
+  const icons = [
+    "●",
+    "◆",
+    "◉",
+    "✦",
+    "✓",
+    "●"
+  ];
 
   return `
-    <div class="flow-visual">
+    <div class="flow-visual flow-diagram">
 
       ${steps
-        .map(
-          (step, index) => `
-            <div class="flow-step">
+        .map((step, index) => `
+          <div class="flow-diagram-item">
 
-              <span>${index + 1}</span>
-
-              <div>
-                <strong>
-                  ${escapeHtml(
-                    step.label ||
-                    `Etapa ${index + 1}`
-                  )}
-                </strong>
-
-                <p>
-                  ${escapeHtml(
-                    step.description || ""
-                  )}
-                </p>
+            <div class="flow-diagram-node">
+              <div class="flow-node-icon">
+                ${icons[index % icons.length]}
               </div>
 
+              <div class="flow-node-number">
+                ${index + 1}
+              </div>
             </div>
-          `
-        )
+
+            <div class="flow-node-content">
+              <strong>
+                ${escapeHtml(
+                  step.label ||
+                  `Etapa ${index + 1}`
+                )}
+              </strong>
+
+              ${
+                step.description
+                  ? `
+                    <p>
+                      ${escapeHtml(step.description)}
+                    </p>
+                  `
+                  : ""
+              }
+            </div>
+
+            ${
+              index < steps.length - 1
+                ? `
+                  <div
+                    class="flow-connector"
+                    aria-hidden="true"
+                  >
+                    <div class="flow-connector-line"></div>
+                    <div class="flow-connector-arrow">▼</div>
+                  </div>
+                `
+                : ""
+            }
+
+          </div>
+        `)
         .join("")}
 
     </div>
