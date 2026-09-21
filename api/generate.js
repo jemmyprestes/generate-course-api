@@ -145,23 +145,50 @@ async function callOpenAI({
 // ============================================================
 
 function parseAIJson(text) {
+  let cleaned = cleanJsonText(text);
 
-  const cleaned =
-    cleanJsonText(text);
+  // Remove qualquer texto antes do primeiro {
+  const firstBrace = cleaned.indexOf("{");
 
+  // Remove qualquer texto depois do último }
+  const lastBrace = cleaned.lastIndexOf("}");
+
+  if (
+    firstBrace === -1 ||
+    lastBrace === -1 ||
+    lastBrace <= firstBrace
+  ) {
+    console.error(
+      "JSON SEM ESTRUTURA VÁLIDA:",
+      cleaned
+    );
+
+    throw new Error(
+      "A IA não retornou uma estrutura JSON válida."
+    );
+  }
+
+  cleaned = cleaned.slice(
+    firstBrace,
+    lastBrace + 1
+  );
 
   try {
     return JSON.parse(cleaned);
 
   } catch (error) {
-
     console.error(
-      "JSON INVÁLIDO:",
+      "JSON INVÁLIDO APÓS LIMPEZA:",
       cleaned
     );
 
+    console.error(
+      "ERRO DO PARSER:",
+      error.message
+    );
+
     throw new Error(
-      "A IA retornou JSON inválido."
+      `A IA retornou JSON inválido: ${error.message}`
     );
   }
 }
