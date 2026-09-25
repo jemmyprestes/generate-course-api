@@ -173,6 +173,12 @@ function parseAIJson(text) {
     lastBrace + 1
   );
 
+  // Corrige vírgulas finais antes de } ou ]
+cleaned = cleaned.replace(
+  /,\s*([}\]])/g,
+  "$1"
+);
+
   try {
     return JSON.parse(cleaned);
 
