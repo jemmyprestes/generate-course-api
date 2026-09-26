@@ -2053,18 +2053,14 @@ export default async function handler(
         style: cleanStyle
       });
 
-
     const planningText =
-      await callOpenAI({
-        apiKey: OPENAI_API_KEY,
-        prompt: planningPrompt,
-        maxOutputTokens: 7000
-          
-         schema: planningSchema,
-
+  await callOpenAI({
+    apiKey: OPENAI_API_KEY,
+    prompt: planningPrompt,
+    maxOutputTokens: 7000,
+    schema: planningSchema,
     schemaName: "course_plan"
-      });
-
+  });
 
     const plan =
       parseAIJson(
@@ -2119,19 +2115,15 @@ export default async function handler(
           modulePlan,
           moduleIndex: index
         });
-
-
-      const moduleText =
-        await callOpenAI({
-          apiKey: OPENAI_API_KEY,
-          prompt: modulePrompt,
-          maxOutputTokens: 12000
-
-          schema: moduleSchema,
-
+      
+const moduleText =
+  await callOpenAI({
+    apiKey: OPENAI_API_KEY,
+    prompt: modulePrompt,
+    maxOutputTokens: 12000,
+    schema: moduleSchema,
     schemaName: "course_module"
-        });
-
+  });
 
       const generatedModule =
         parseAIJson(
