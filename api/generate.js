@@ -73,11 +73,350 @@ function normalizeStyle(value = "") {
 // CHAMADA OPENAI
 // ============================================================
 
+const planningSchema = {
+  type: "object",
+  properties: {
+    title: {
+      type: "string"
+    },
+    description: {
+      type: "string"
+    },
+    audience: {
+      type: "array",
+      items: {
+        type: "string"
+      }
+    },
+    objective: {
+      type: "string"
+    },
+    modulesIntro: {
+      type: "string"
+    },
+    modules: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string"
+          },
+          summary: {
+            type: "string"
+          },
+          lessons: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                title: {
+                  type: "string"
+                },
+                objective: {
+                  type: "string"
+                }
+              },
+              required: [
+                "title",
+                "objective"
+              ],
+              additionalProperties: false
+            }
+          }
+        },
+        required: [
+          "title",
+          "summary",
+          "lessons"
+        ],
+        additionalProperties: false
+      }
+    },
+    nextSteps: {
+      type: "string"
+    }
+  },
+  required: [
+    "title",
+    "description",
+    "audience",
+    "objective",
+    "modulesIntro",
+    "modules",
+    "nextSteps"
+  ],
+  additionalProperties: false
+};
+
+
+const moduleSchema = {
+  type: "object",
+
+  properties: {
+    title: {
+      type: "string"
+    },
+
+    summary: {
+      type: "string"
+    },
+
+    lessons: {
+      type: "array",
+
+      items: {
+        type: "object",
+
+        properties: {
+          title: {
+            type: "string"
+          },
+
+          objective: {
+            type: "string"
+          },
+
+          content: {
+            type: "array",
+            items: {
+              type: "string"
+            }
+          },
+
+          example: {
+            type: "array",
+            items: {
+              type: "string"
+            }
+          },
+
+          visualExample: {
+            anyOf: [
+              {
+                type: "null"
+              },
+              {
+                type: "object",
+
+                properties: {
+                  enabled: {
+                    type: "boolean"
+                  },
+
+                  title: {
+                    type: "string"
+                  },
+
+                  description: {
+                    type: "string"
+                  },
+
+                  visualType: {
+                    type: "string",
+                    enum: [
+                      "flow",
+                      "comparison",
+                      "layout",
+                      "dialogue"
+                    ]
+                  },
+
+                  canvasLabel: {
+                    type: "string"
+                  },
+
+                  annotations: {
+                    type: "array",
+
+                    items: {
+                      type: "object",
+
+                      properties: {
+                        position: {
+                          type: "string",
+                          enum: [
+                            "top",
+                            "upper-left",
+                            "upper-right",
+                            "center",
+                            "middle-left",
+                            "middle-right",
+                            "bottom",
+                            "bottom-left",
+                            "bottom-right"
+                          ]
+                        },
+
+                        label: {
+                          type: "string"
+                        },
+
+                        description: {
+                          type: "string"
+                        }
+                      },
+
+                      required: [
+                        "position",
+                        "label",
+                        "description"
+                      ],
+
+                      additionalProperties: false
+                    }
+                  },
+
+                  steps: {
+                    type: "array",
+
+                    items: {
+                      type: "object",
+
+                      properties: {
+                        label: {
+                          type: "string"
+                        },
+
+                        description: {
+                          type: "string"
+                        }
+                      },
+
+                      required: [
+                        "label",
+                        "description"
+                      ],
+
+                      additionalProperties: false
+                    }
+                  },
+
+                  columns: {
+                    type: "array",
+
+                    items: {
+                      type: "object",
+
+                      properties: {
+                        title: {
+                          type: "string"
+                        },
+
+                        items: {
+                          type: "array",
+                          items: {
+                            type: "string"
+                          }
+                        }
+                      },
+
+                      required: [
+                        "title",
+                        "items"
+                      ],
+
+                      additionalProperties: false
+                    }
+                  },
+
+                  dialogue: {
+                    type: "array",
+
+                    items: {
+                      type: "object",
+
+                      properties: {
+                        speaker: {
+                          type: "string"
+                        },
+
+                        text: {
+                          type: "string"
+                        }
+                      },
+
+                      required: [
+                        "speaker",
+                        "text"
+                      ],
+
+                      additionalProperties: false
+                    }
+                  }
+                },
+
+                required: [
+                  "enabled",
+                  "title",
+                  "description",
+                  "visualType",
+                  "canvasLabel",
+                  "annotations",
+                  "steps",
+                  "columns",
+                  "dialogue"
+                ],
+
+                additionalProperties: false
+              }
+            ]
+          }
+        },
+
+        required: [
+          "title",
+          "objective",
+          "content",
+          "example",
+          "visualExample"
+        ],
+
+        additionalProperties: false
+      }
+    }
+  },
+
+  required: [
+    "title",
+    "summary",
+    "lessons"
+  ],
+
+  additionalProperties: false
+};
+
 async function callOpenAI({
   apiKey,
   prompt,
-  maxOutputTokens = 10000
+  maxOutputTokens = 10000,
+  schema,
+  schemaName = "structured_response"
 }) {
+
+  const body = {
+    model: "gpt-5.6-luna",
+
+    input: prompt,
+
+    max_output_tokens: maxOutputTokens
+  };
+
+
+  if (schema) {
+    body.text = {
+      format: {
+        type: "json_schema",
+
+        name: schemaName,
+
+        strict: true,
+
+        schema
+      }
+    };
+  }
+
 
   const response = await fetch(
     "https://api.openai.com/v1/responses",
@@ -89,13 +428,7 @@ async function callOpenAI({
         Authorization: `Bearer ${apiKey}`
       },
 
-      body: JSON.stringify({
-        model: "gpt-5.6-luna",
-
-        input: prompt,
-
-        max_output_tokens: maxOutputTokens
-      })
+      body: JSON.stringify(body)
     }
   );
 
@@ -130,6 +463,11 @@ async function callOpenAI({
 
 
   if (!outputText) {
+    console.error(
+      "RESPOSTA OPENAI SEM TEXTO:",
+      JSON.stringify(data)
+    );
+
     throw new Error(
       "A OpenAI não retornou conteúdo."
     );
@@ -1721,6 +2059,10 @@ export default async function handler(
         apiKey: OPENAI_API_KEY,
         prompt: planningPrompt,
         maxOutputTokens: 7000
+          
+         schema: planningSchema,
+
+    schemaName: "course_plan"
       });
 
 
@@ -1784,6 +2126,10 @@ export default async function handler(
           apiKey: OPENAI_API_KEY,
           prompt: modulePrompt,
           maxOutputTokens: 12000
+
+          schema: moduleSchema,
+
+    schemaName: "course_module"
         });
 
 
