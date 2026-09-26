@@ -583,66 +583,128 @@ function renderParagraphs(content) {
     .join("");
 }
 
-
 function renderLayoutVisual(visual) {
-
   const annotations =
     Array.isArray(visual.annotations)
       ? visual.annotations
       : [];
 
-
   if (!annotations.length) {
     return "";
   }
 
+  const centerItem =
+    annotations.find(
+      item => item.position === "center"
+    ) ||
+    annotations[Math.floor(annotations.length / 2)];
+
+  const surroundingItems =
+    annotations.filter(
+      item => item !== centerItem
+    );
+
+  const getSide = (position = "") => {
+    if (position.includes("left")) return "left";
+    if (position.includes("right")) return "right";
+    if (position === "top") return "top";
+    if (position === "bottom") return "bottom";
+    return "side";
+  };
 
   return `
     <div class="visual-canvas">
-      <div class="layout-board">
+      <div class="layout-diagram">
 
-        <div class="layout-board-label">
+        <div class="layout-diagram-title">
           ${escapeHtml(
             visual.canvasLabel ||
             visual.title ||
-            "Modelo visual"
+            "Estrutura visual"
           )}
         </div>
 
-        ${annotations
-          .map((annotation, index) => {
+        <div class="layout-diagram-stage">
 
-            const position =
-              normalizePosition(
-                annotation.position
-              );
+          <div class="layout-center-object">
+            <div class="layout-center-ring">
+              <span class="layout-center-dot"></span>
+            </div>
 
-            return `
-              <div class="layout-point layout-${position}">
-                <span>${index + 1}</span>
+            <strong>
+              ${escapeHtml(
+                centerItem.label ||
+                "Elemento central"
+              )}
+            </strong>
 
-                <strong>
-                  ${escapeHtml(
-                    annotation.label ||
-                    `Ponto ${index + 1}`
-                  )}
-                </strong>
+            ${
+              centerItem.description
+                ? `
+                  <p>
+                    ${escapeHtml(
+                      centerItem.description
+                    )}
+                  </p>
+                `
+                : ""
+            }
+          </div>
 
-                <small>
-                  ${escapeHtml(
-                    annotation.description || ""
-                  )}
-                </small>
-              </div>
-            `;
-          })
-          .join("")}
+          ${surroundingItems
+            .map((annotation, index) => {
+
+              const side =
+                getSide(annotation.position);
+
+              return `
+                <div
+                  class="
+                    layout-annotation
+                    layout-annotation-${side}
+                    layout-annotation-${index + 1}
+                  "
+                >
+                  <div class="layout-annotation-marker">
+                    ${index + 1}
+                  </div>
+
+                  <div class="layout-annotation-text">
+                    <strong>
+                      ${escapeHtml(
+                        annotation.label ||
+                        `Elemento ${index + 1}`
+                      )}
+                    </strong>
+
+                    ${
+                      annotation.description
+                        ? `
+                          <p>
+                            ${escapeHtml(
+                              annotation.description
+                            )}
+                          </p>
+                        `
+                        : ""
+                    }
+                  </div>
+
+                  <div
+                    class="layout-annotation-line"
+                    aria-hidden="true"
+                  ></div>
+                </div>
+              `;
+            })
+            .join("")}
+
+        </div>
 
       </div>
     </div>
   `;
 }
-
 
 function renderFlowVisual(visual) {
   const steps =
