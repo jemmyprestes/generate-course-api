@@ -1,3 +1,4 @@
+import { enforced, sandbox, user, ownedCourse, db, failure, HttpError } from '../lib/billing.js';
 export default async function handler(req, res) {
   // ============================
   // CORS
@@ -29,6 +30,17 @@ export default async function handler(req, res) {
   }
 
   try {
+    let billingAccount;
+    let billingCourse;
+    if (enforced()) {
+      sandbox();
+      billingAccount = await user(req);
+      billingCourse = await ownedCourse(billingAccount.id, req.body?.courseId);
+      if (typeof billingCourse.content !== 'string' || !billingCourse.content.trim()) {
+        throw new HttpError(503, 'Conteúdo persistido do curso indisponível.');
+      }
+      await db('rpc/billing_reserve_test_attempt', { p_user_id: billingAccount.id, p_course_id: billingCourse.id });
+    }
     // ============================
     // VARIÁVEIS DE AMBIENTE
     // ============================
@@ -76,7 +88,7 @@ export default async function handler(req, res) {
 
 
     let rawCourseContent =
-      course || content;
+      billingCourse ? billingCourse.content : course || content;
 
 
     if (
@@ -359,6 +371,10 @@ Crie agora o teste final seguindo rigorosamente as regras.
         })
       );
 
+    if (billingAccount) await db('billing_test_bindings', {
+      test_id: testId, user_id: billingAccount.id, course_id: billingCourse.id
+    });
+
 
     // ============================
     // SALVAR GABARITO NO SUPABASE
@@ -455,6 +471,7 @@ Crie agora o teste final seguindo rigorosamente as regras.
 
 
   } catch (error) {
+    if (error instanceof HttpError) return failure(res, error);
 
     console.error(
       "ERRO EM GENERATE-TEST:",

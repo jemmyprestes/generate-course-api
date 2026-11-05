@@ -1,3 +1,4 @@
+import { enforced, sandbox, db, failure, HttpError } from '../lib/billing.js';
 export default async function handler(req, res) {
 
   // ============================
@@ -163,6 +164,12 @@ export default async function handler(req, res) {
           "As respostas são obrigatórias."
       });
 
+    }
+
+    if (enforced()) {
+      sandbox();
+      const binding = await db(`billing_test_bindings?test_id=eq.${encodeURIComponent(testId)}&user_id=eq.${encodeURIComponent(user.id)}&course_id=eq.${encodeURIComponent(courseId)}&select=test_id`);
+      if (binding.length !== 1) return res.status(403).json({ error: 'Esta avaliação não pertence a este curso e utilizador.' });
     }
 
 
@@ -484,6 +491,7 @@ export default async function handler(req, res) {
 
 
   } catch (error) {
+    if (error instanceof HttpError) return failure(res, error);
 
     console.error(
       "ERRO EM SUBMIT-TEST:",
