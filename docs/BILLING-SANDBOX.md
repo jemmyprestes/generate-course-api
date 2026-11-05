@@ -2,11 +2,13 @@
 
 ## Estado em 5 de novembro de 2026
 
-Implementação em branch de teste. **Não ativada, não publicada em produção e ainda sem teste financeiro ponta a ponta.**
+Implementação em branch de teste e [PR #1 em rascunho](https://github.com/jemmyprestes/generate-course-api/pull/1). A Vercel criou um preview com estado READY. **Pagamentos não ativados, não publicados em produção e ainda sem teste financeiro ponta a ponta.**
 
 - Repositório conferido: `jemmyprestes/generate-course-api`, base `3f208c97f79a57ee2b6d8151ec6346efe1e48454`.
 - GitHub conectado com permissão de escrita.
-- Vercel conectada: `project-hfc6r` retorna 404 na conta padrão e na equipe acessível `jemmy's projects`; a listagem dessa equipe não retorna projetos.
+- Vercel conectada: projeto real `generate-course-api` (`prj_n0x6zn7mLjDosjrYuBxtxM1ydREj`), equipe `jemmy's projects`. `project-hfc6r.vercel.app` é um domínio desse projeto, não seu nome. Foi localizado na listagem geral após as consultas pelo nome antigo retornarem 404.
+- Metadados confirmados: `STRIPE_SECRET_KEY` está restrita ao alvo production; não existe `STRIPE_WEBHOOK_SECRET`. As variáveis Supabase e OpenAI também abrangem preview; não se confirmou que apontam para recursos isolados de teste e não foram alteradas.
+- Preview da implementação: `https://generate-course-pt69b8r67-jemmy-s-projects.vercel.app`, commit `f2479690e1fecc05c1faf06f05e0b30094bde4b3`, estado READY. As consultas autenticadas a suas rotas foram negadas com 403 na leitura da proteção de acesso. Necessário autorizar o projeto/equipe na conexão Vercel para executar verificações remotas.
 - Supabase, Webflow e Stripe sem ferramentas autenticadas disponíveis nesta sessão.
 - Não foram lidos valores de variáveis secretas.
 
@@ -60,7 +62,7 @@ Esses testes não comprovam compatibilidade com o esquema remoto nem a disponibi
 
 ## Trabalho pendente que depende de acesso
 
-1. Identificar a conta/equipe Vercel que contém o projeto correto e verificar metadados das variáveis de preview. `STRIPE_SECRET_KEY` existente foi informado pelo utilizador, não confirmado na conta.
+1. Autorizar acesso ao preview protegido do projeto/equipe na conexão Vercel. Disponibilizar uma chave Stripe comprovadamente sandbox no preview isolado; a chave existente está configurada apenas para production. Não foi copiada nem exposta.
 2. Inspecionar o esquema real e as permissões no Supabase, em especial assinaturas das RPCs, `courses.content`, tipos UUID, resultados de avaliação e emissão de certificados. Criar branch de desenvolvimento e aplicar a migração nela; não no banco em produção.
 3. Conferir os três preços na sandbox Stripe; criar o endpoint de eventos de teste e disponibilizar `STRIPE_WEBHOOK_SECRET` no ambiente de preview sem imprimir o valor. Ouvir checkout concluído/pago, alterações de assinatura e faturas pagas/falhadas. A versão do webhook deve ser compatível com `2026-10-28.endive`.
 4. Conferir os scripts e botões reais no Webflow; integrar o adaptador e todos os emissores/downloads de certificados. O endpoint de autorização sozinho não protege um certificado inteiramente gerado no navegador.
