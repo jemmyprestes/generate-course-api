@@ -1,3 +1,4 @@
+import { enforced, sandbox } from '../lib/billing.js';
 import {
   callOpenAI, parseAIJson, planningSchema, moduleSchema,
   buildPlanningPrompt, buildModulePrompt, validatePlan,
@@ -148,6 +149,7 @@ export default async function handler(req, res) {
       claim = { token, step: 'planning' };
       phase = 'planning';
       const count = clampModuleCount(input.modules ?? input.moduleCount ?? (job.total_modules || 6));
+      if (enforced()) { sandbox(); await rpc('billing_reserve_generation_attempt'); }
       const plan = parseAIJson(await boundedAI({
         apiKey: process.env.OPENAI_API_KEY,
         prompt: buildPlanningPrompt({ ...options, moduleCount: count }),
@@ -170,6 +172,7 @@ export default async function handler(req, res) {
     phase = 'module';
     const index = next.module_number - 1;
     const modulePlan = job.course_plan.modules[index];
+    if (enforced()) { sandbox(); await rpc('billing_reserve_generation_attempt'); }
     const module = validateGeneratedModule(parseAIJson(await boundedAI({
       apiKey: process.env.OPENAI_API_KEY,
       prompt: buildModulePrompt({ ...options, plan: job.course_plan, modulePlan, moduleIndex: index }),

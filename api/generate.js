@@ -1,3 +1,4 @@
+import { enforced, sandbox, failure } from '../lib/billing.js';
 // ============================================================
 // E-LEARN — GERADOR DE CURSOS
 // Arquitetura:
@@ -2011,7 +2012,10 @@ export default async function handler(
     });
   }
 
-
+  if (enforced()) {
+    try { sandbox(); } catch (error) { return failure(res, error); }
+    return res.status(409).json({ error: 'Use /api/start-generation e /api/process-generation para gerar cursos autenticados.' });
+  }
   try {
 
     // ========================================================

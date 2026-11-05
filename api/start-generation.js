@@ -1,3 +1,4 @@
+import { enforced, sandbox } from '../lib/billing.js';
 // api/start-generation.js
 const allowedOrigin = 'https://e-learn-landing.webflow.io';
 
@@ -11,6 +12,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({error:'Método não permitido.'});
 
   try {
+    if (enforced()) sandbox();
     const url = process.env.SUPABASE_URL?.replace(/\/$/, '');
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) throw new Error('Configuração incompleta');
@@ -38,13 +40,17 @@ export default async function handler(req, res) {
       audience:String(audience ?? '').trim().slice(0,700),
       style:['profissional','academico','intensivo','workshop'].includes(style)?style:'profissional'
     };
-    const response = await fetch(`${url}/rest/v1/rpc/start_or_resume_course_generation`, {
+    const response = await fetch(`${url}/rest/v1/rpc/${enforced() ? 'billing_start_generation' : 'start_or_resume_course_generation'}`, {
       method:'POST',
       headers:{apikey:key,Authorization:`Bearer ${key}`,'Content-Type':'application/json'},
       body:JSON.stringify({p_user_id:user.id,p_request_data:request}),
       signal:AbortSignal.timeout(30000)
     });
-    if (!response.ok) throw new Error('Falha ao registar trabalho');
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      if (error.message === 'BILLING_PAYMENT_REQUIRED') return res.status(402).json({error:'Adquira um curso ou verifique o limite do Plus.'});
+      throw new Error('Falha ao registar trabalho');
+    }
     const result = await response.json();
     if (!result?.jobId) throw new Error('Resposta sem identificador');
     return res.status(result.created ? 201 : 200).json(result);
